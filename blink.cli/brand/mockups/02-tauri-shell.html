@@ -1,0 +1,478 @@
+<!doctype html>
+<!--
+  Tinkr Mockup 02 — Tauri Shell (v1.5 surface)
+  ======================================================================
+  Design notes (in-app panel explains the same):
+
+  1. THREE-PANE LAYOUT, NO TOOLBARS. The shell puts the editor in the
+     center and never adds a top toolbar. Device list, capture, and
+     agent chat all live in docked sidebars. The full vertical space
+     belongs to the code.
+
+  2. STATUS BAR IS THE CONTROL SURFACE. Git branch, current device,
+     capture suggestions, MCP server status — every cross-cutting
+     concern lives in the 28px status bar. Nothing pops up.
+
+  3. CAPTURE BADGE IS A STATUS BAR CITIZEN, NOT A POPUP. From
+     capture_layer.md §3.1: "The prompt is not a popup. It is a small
+     Capture badge in the status bar." It pulses when there is a
+     suggestion. Clicking opens a side panel — never a modal.
+
+  4. THE 5 CAPTURE TRIGGER TYPES SURFACE ICONOGRAPHICALLY. Recipe,
+     fix, chip, pattern, publish. A small chip in the status bar shows
+     the type of the current suggestion. Users learn the vocabulary
+     by seeing it.
+
+  5. LIGHT + DARK. Dark default. Light uses the same color semantics
+     (cyan = brand, green = ok, red = error, amber = warn, blue = info).
+     A toggle in the title bar persists per-user.
+
+  6. ARIA-LED. The shell is a screen reader's dream: landmarks, named
+     regions, keyboard shortcuts (⌘P palette, ⌘B sidebar, ⌘J chat).
+  ======================================================================
+-->
+<html lang="en" class="dark">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Tinkr — Tauri Shell (v1.5)</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0B1120;
+    --surface: #0F172A;
+    --surface-2: #111827;
+    --border: #1F2937;
+    --text: #E2E8F0;
+    --text-dim: #94A3B8;
+    --text-muted: #64748B;
+    --cyan: #5EEAD4;
+    --cyan-deep: #06B6D4;
+    --amber: #F59E0B;
+    --green: #10B981;
+    --red: #EF4444;
+    --blue: #60A5FA;
+    --magenta: #C084FC;
+  }
+  html.light {
+    --bg: #FAFAFA;
+    --surface: #FFFFFF;
+    --surface-2: #F1F5F9;
+    --border: #E2E8F0;
+    --text: #0F172A;
+    --text-dim: #475569;
+    --text-muted: #94A3B8;
+  }
+  html, body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', system-ui, sans-serif;
+  }
+  .mono { font-family: 'JetBrains Mono', ui-monospace, monospace; }
+  .display { font-family: 'Space Grotesk', system-ui, sans-serif; }
+  .bg-bg { background-color: var(--bg); }
+  .bg-surface { background-color: var(--surface); }
+  .bg-surface-2 { background-color: var(--surface-2); }
+  .border-default { border-color: var(--border); }
+  .text-default { color: var(--text); }
+  .text-dim { color: var(--text-dim); }
+  .text-muted { color: var(--text-muted); }
+  .text-cyan { color: var(--cyan); }
+  .text-green { color: var(--green); }
+  .text-amber { color: var(--amber); }
+  .text-red { color: var(--red); }
+  .text-blue { color: var(--blue); }
+  .text-magenta { color: var(--magenta); }
+  @keyframes pulse-ring {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(34, 211, 238, 0.6); }
+    50% { box-shadow: 0 0 0 5px rgba(34, 211, 238, 0); }
+  }
+  .pulse { animation: pulse-ring 1.6s ease-out infinite; }
+  /* syntax highlighting (a tiny one) */
+  .kw { color: #C084FC; }
+  .fn { color: #5EEAD4; }
+  .str { color: #FBBF24; }
+  .num { color: #F472B6; }
+  .cmt { color: #64748B; font-style: italic; }
+  .var { color: #E2E8F0; }
+  .punc { color: #94A3B8; }
+  html.light .kw { color: #7C3AED; }
+  html.light .fn { color: #0891B2; }
+  html.light .str { color: #B45309; }
+  html.light .num { color: #BE185D; }
+  html.light .var { color: #0F172A; }
+  /* Mac window */
+  .mac-chrome {
+    background: linear-gradient(180deg, #1E293B 0%, #0F172A 100%);
+  }
+  html.light .mac-chrome {
+    background: linear-gradient(180deg, #E2E8F0 0%, #CBD5E1 100%);
+  }
+  .scrollbar::-webkit-scrollbar { width: 8px; height: 8px; }
+  .scrollbar::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+  .scrollbar::-webkit-scrollbar-track { background: transparent; }
+</style>
+</head>
+<body class="min-h-screen">
+
+<!-- Page wrapper (around the IDE window) -->
+<div class="max-w-[1500px] mx-auto px-6 py-8 space-y-6">
+
+  <!-- Top doc header (this is the mockup framing, not the IDE) -->
+  <header class="flex items-center justify-between">
+    <div>
+      <div class="text-xs mono uppercase tracking-widest text-cyan-400">v1.5 surface · tauri shell</div>
+      <h1 class="display text-3xl md:text-4xl font-semibold tracking-tight mt-2">A desktop shell that <span class="text-cyan">disappears</span>.</h1>
+      <p class="text-dim mt-3 max-w-2xl">The Tauri shell is a thin view on the `tinkr` CLI. Three panes, one status bar, zero toolbars. Everything that matters lives in 28 pixels at the bottom.</p>
+    </div>
+    <div class="flex items-center gap-2">
+      <a href="01-cli-output.html" class="text-xs mono px-3 py-1.5 rounded-md bg-surface-2 border border-default hover:border-cyan/40">← cli output</a>
+      <a href="03-marketplace.html" class="text-xs mono px-3 py-1.5 rounded-md bg-surface-2 border border-default hover:border-cyan/40">marketplace →</a>
+    </div>
+  </header>
+
+  <!-- ====================== THE IDE WINDOW ====================== -->
+  <div class="rounded-xl overflow-hidden border border-default shadow-2xl" style="box-shadow: 0 30px 80px -20px rgba(0,0,0,0.5);">
+
+    <!-- Title bar -->
+    <div class="mac-chrome border-b border-default px-4 h-9 flex items-center gap-3 select-none" role="banner" aria-label="Window title bar">
+      <div class="flex items-center gap-1.5" role="group" aria-label="Window controls">
+        <button class="h-3 w-3 rounded-full bg-red-500 hover:bg-red-400 cursor-pointer" aria-label="Close window"></button>
+        <button class="h-3 w-3 rounded-full bg-amber-400 hover:bg-amber-300 cursor-pointer" aria-label="Minimize window"></button>
+        <button class="h-3 w-3 rounded-full bg-emerald-500 hover:bg-emerald-400 cursor-pointer" aria-label="Maximize window"></button>
+      </div>
+      <div class="flex-1 text-center text-[11px] mono text-dim">
+        <span class="text-default">kitchen-sensor</span> · <span class="text-cyan">⎇</span> <span class="text-default">main</span> · <span class="text-muted">ESP32-S3 · MicroPython 1.24.1</span>
+      </div>
+      <div class="flex items-center gap-2 text-[11px] mono text-muted" role="group" aria-label="Title bar actions">
+        <!-- Theme toggle -->
+        <button onclick="document.documentElement.classList.toggle('light')" class="px-2 py-0.5 rounded hover:bg-surface-2 cursor-pointer" aria-label="Toggle light/dark theme" title="Toggle theme (⌘⇧L)">
+          <span class="dark:hidden">☀ light</span>
+          <span class="hidden dark:inline">◐ dark</span>
+        </button>
+        <span>⌘P palette</span>
+      </div>
+    </div>
+
+    <!-- Three-pane layout -->
+    <div class="grid grid-cols-[240px_1fr_340px] h-[640px] bg-bg">
+
+      <!-- ============ LEFT: Devices ============ -->
+      <aside class="border-r border-default bg-surface-2 flex flex-col" aria-label="Device list">
+        <div class="px-3 h-9 flex items-center justify-between border-b border-default text-[11px] mono uppercase tracking-wider text-dim">
+          <span>devices</span>
+          <button class="text-cyan hover:text-cyan/80 cursor-pointer" aria-label="Scan for devices">⟳</button>
+        </div>
+        <div class="px-3 py-2 border-b border-default">
+          <div class="relative">
+            <input class="w-full bg-bg border border-default rounded-md text-xs px-2.5 py-1.5 placeholder:text-muted focus:outline-none focus:border-cyan/60" placeholder="Filter devices…" aria-label="Filter devices">
+          </div>
+        </div>
+        <div class="flex-1 overflow-y-auto scrollbar" role="list" aria-label="Detected devices">
+          <!-- Default device -->
+          <div class="px-3 py-2 border-l-2 border-cyan bg-cyan/5" role="listitem" tabindex="0" aria-current="true">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2 min-w-0">
+                <span class="h-2 w-2 rounded-full bg-green pulse" aria-label="Online"></span>
+                <span class="text-sm font-medium truncate">esp32s3-left</span>
+              </div>
+              <span class="text-[10px] mono text-cyan">default</span>
+            </div>
+            <div class="text-[11px] mono text-dim mt-0.5 truncate">kitchen sensor · ESP32-S3</div>
+            <div class="text-[10px] mono text-muted mt-0.5 truncate">/dev/cu.usbserial-1410</div>
+          </div>
+          <div class="px-3 py-2 hover:bg-surface cursor-pointer" role="listitem" tabindex="0">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2 min-w-0">
+                <span class="h-2 w-2 rounded-full bg-green" aria-label="Online"></span>
+                <span class="text-sm font-medium truncate">esp32s3-spare</span>
+              </div>
+              <span class="text-[10px] mono text-muted">240 MHz</span>
+            </div>
+            <div class="text-[11px] mono text-dim mt-0.5 truncate">spare board · ESP32-S3</div>
+            <div class="text-[10px] mono text-muted mt-0.5 truncate">last seen 2d ago</div>
+          </div>
+          <div class="px-3 py-2 hover:bg-surface cursor-pointer" role="listitem" tabindex="0">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2 min-w-0">
+                <span class="h-2 w-2 rounded-full bg-amber" aria-label="Idle"></span>
+                <span class="text-sm font-medium truncate">rp2040-pico</span>
+              </div>
+              <span class="text-[10px] mono text-amber">idle</span>
+            </div>
+            <div class="text-[11px] mono text-dim mt-0.5 truncate">Raspberry Pi Pico W</div>
+            <div class="text-[10px] mono text-muted mt-0.5 truncate">/dev/cu.usbmodem14101</div>
+          </div>
+          <div class="px-3 py-2 hover:bg-surface cursor-pointer" role="listitem" tabindex="0">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2 min-w-0">
+                <span class="h-2 w-2 rounded-full bg-red" aria-label="Error"></span>
+                <span class="text-sm font-medium truncate">nrf52-band</span>
+              </div>
+              <span class="text-[10px] mono text-red">err</span>
+            </div>
+            <div class="text-[11px] mono text-dim mt-0.5 truncate">XIAO nRF52840 · last error</div>
+            <div class="text-[10px] mono text-muted mt-0.5 truncate">ETIMEDOUT · see KB</div>
+          </div>
+        </div>
+        <div class="border-t border-default p-2">
+          <div class="text-[10px] mono uppercase tracking-wider text-muted px-1 mb-1.5">quick actions</div>
+          <div class="space-y-0.5">
+            <button class="w-full text-left text-xs px-2 py-1 rounded hover:bg-surface text-dim hover:text-default cursor-pointer flex items-center gap-2"><span class="text-cyan">▷</span> deploy (⌘⇧D)</button>
+            <button class="w-full text-left text-xs px-2 py-1 rounded hover:bg-surface text-dim hover:text-default cursor-pointer flex items-center gap-2"><span class="text-green">▷</span> repl (⌘⇧R)</button>
+            <button class="w-full text-left text-xs px-2 py-1 rounded hover:bg-surface text-dim hover:text-default cursor-pointer flex items-center gap-2"><span class="text-amber">▷</span> monitor (⌘⇧M)</button>
+            <button class="w-full text-left text-xs px-2 py-1 rounded hover:bg-surface text-dim hover:text-default cursor-pointer flex items-center gap-2"><span class="text-magenta">▷</span> device scan (⌘⇧S)</button>
+          </div>
+        </div>
+      </aside>
+
+      <!-- ============ CENTER: Editor ============ -->
+      <main class="flex flex-col bg-bg" aria-label="Code editor">
+        <!-- Tabs -->
+        <div class="h-9 border-b border-default bg-surface-2 flex items-end px-1 gap-0.5">
+          <div class="h-full px-3 flex items-center gap-2 bg-bg border-r border-default text-xs">
+            <span class="text-blue">🐍</span><span class="text-default">main.py</span>
+            <span class="h-1.5 w-1.5 rounded-full bg-amber" aria-label="Modified"></span>
+          </div>
+          <div class="h-full px-3 flex items-center gap-2 text-dim text-xs hover:bg-surface cursor-pointer">
+            <span class="text-cyan">⚙</span><span>tinkr.toml</span>
+          </div>
+          <div class="h-full px-3 flex items-center gap-2 text-dim text-xs hover:bg-surface cursor-pointer">
+            <span class="text-magenta">⚙</span><span>lib/sensor.py</span>
+          </div>
+          <div class="h-full px-3 flex items-center gap-2 text-dim text-xs hover:bg-surface cursor-pointer">
+            <span class="text-green">▷</span><span>lib/wifi.py</span>
+          </div>
+          <div class="flex-1"></div>
+          <div class="h-full px-3 flex items-center text-dim text-xs mono">↪</div>
+        </div>
+        <!-- Breadcrumb / outline -->
+        <div class="h-7 border-b border-default bg-bg flex items-center px-3 text-[11px] mono text-dim gap-1.5">
+          <span class="text-muted">kitchen-sensor</span><span class="text-muted">/</span><span class="text-default">main.py</span>
+          <span class="ml-auto text-muted">utf-8 · LF · python 3.12</span>
+        </div>
+        <!-- Code area (Monaco-style) -->
+        <div class="flex-1 overflow-auto scrollbar flex">
+          <div class="select-none text-right text-[12px] mono text-muted px-3 py-3 leading-[20px] bg-bg border-r border-default" aria-hidden="true">
+            <div>1</div><div>2</div><div>3</div><div>4</div><div>5</div><div>6</div><div>7</div><div>8</div><div>9</div><div>10</div><div>11</div><div>12</div><div>13</div><div>14</div><div>15</div><div>16</div><div>17</div><div>18</div><div>19</div><div>20</div><div>21</div><div>22</div><div>23</div><div>24</div><div>25</div>
+          </div>
+          <pre class="flex-1 text-[12.5px] mono leading-[20px] py-3 px-3 whitespace-pre" aria-label="main.py source"><span class="cmt"># kitchen-sensor · kitchen counter temperature + humidity</span>
+<span class="cmt"># deploy with: tinkr project deploy --device esp32s3-left</span>
+
+<span class="kw">import</span> time
+<span class="kw">from</span> machine <span class="kw">import</span> Pin, I2C
+<span class="kw">import</span> network, bme280
+<span class="kw">from</span> umqtt.simple <span class="kw">import</span> MQTTClient
+
+<span class="cmt"># I2C bus on GPIO8 (SDA) / GPIO9 (SCL) — 4.7kΩ pull-ups required</span>
+i2c = I2C(<span class="num">0</span>, scl=Pin(<span class="num">9</span>), sda=Pin(<span class="num">8</span>), freq=<span class="num">100_000</span>)
+sensor = bme280.BME280(i2c=i2c)
+
+<span class="cmt"># onboard LED on GPIO48 — used as a heartbeat indicator</span>
+led = Pin(<span class="num">48</span>, Pin.OUT)
+
+<span class="kw">def</span> <span class="fn">connect_wifi</span>(ssid, psk, timeout=<span class="num">10</span>):
+    wlan = network.WLAN(network.STA_IF)
+    wlan.active(<span class="kw">True</span>)
+    wlan.connect(ssid, psk)
+    <span class="kw">for</span> _ <span class="kw">in</span> range(timeout * <span class="num">10</span>):
+        <span class="kw">if</span> wlan.isconnected(): <span class="kw">return</span> wlan.ifconfig()
+        time.sleep_ms(<span class="num">100</span>)
+    <span class="kw">raise</span> OSError(<span class="str">"wifi timeout"</span>)
+
+<span class="cmt"># TODO(ronie): add mqtt TLS via umqtt.robust</span></pre>
+        </div>
+      </main>
+
+      <!-- ============ RIGHT: AI Chat ============ -->
+      <aside class="border-l border-default bg-surface-2 flex flex-col" aria-label="AI agent chat">
+        <div class="px-3 h-9 flex items-center justify-between border-b border-default text-[11px] mono uppercase tracking-wider text-dim">
+          <span class="flex items-center gap-1.5">
+            <span class="h-1.5 w-1.5 rounded-full bg-cyan"></span>
+            agent · claude-sonnet-4
+          </span>
+          <span class="text-cyan">⌘J</span>
+        </div>
+        <div class="flex-1 overflow-y-auto scrollbar p-3 space-y-3" aria-label="Chat transcript">
+          <!-- User msg -->
+          <div class="flex justify-end">
+            <div class="max-w-[85%] bg-cyan/15 border border-cyan/30 rounded-lg rounded-tr-sm px-3 py-2 text-[13px]">
+              <span class="text-cyan text-[10px] mono uppercase">you · 12:38</span>
+              <div class="mt-0.5">i2c.scan() returns <code class="mono text-amber">ETIMEDOUT</code> on the BME280. i added 4.7k pull-ups already.</div>
+            </div>
+          </div>
+          <!-- Agent msg -->
+          <div class="flex">
+            <div class="max-w-[90%] bg-surface border border-default rounded-lg rounded-tl-sm px-3 py-2 text-[13px]">
+              <span class="text-cyan text-[10px] mono uppercase">agent · 12:38</span>
+              <div class="mt-0.5 space-y-2">
+                <p>Pull-ups in place and still timing out — that usually means one of three things on ESP32-S3:</p>
+                <ol class="list-decimal pl-5 space-y-1 text-dim">
+                  <li>Wrong pins (some ESP32-S3 boards use GPIO1/2, not 8/9)</li>
+                  <li>Wires too long (&gt;20 cm unshielded picks up noise)</li>
+                  <li>BME280 actually on 0x77 — your <code class="mono">scan()</code> returned empty so we don't know yet</li>
+                </ol>
+                <p>Try this, tell me what you see:</p>
+                <pre class="mono text-[11.5px] bg-bg border border-default rounded p-2 leading-relaxed"><span class="kw">from</span> machine <span class="kw">import</span> Pin, I2C
+i2c = I2C(<span class="num">0</span>, freq=<span class="num">10_000</span>)  <span class="cmt"># slow first</span>
+i2c.scan()</pre>
+                <p class="text-dim">Slower freq often lets flaky I2C devices respond. If we see <code class="mono text-green">[119]</code> (0x77) or <code class="mono text-green">[118]</code> (0x76), it's a wiring fix, not a code fix.</p>
+              </div>
+              <div class="mt-2 pt-2 border-t border-default flex items-center gap-2 text-[10px] mono text-muted">
+                <span>used: <span class="text-cyan">esp32.bme280_address_probe</span> · 3 KB ctx</span>
+                <span class="ml-auto text-cyan">↩ apply</span>
+              </div>
+            </div>
+          </div>
+          <!-- User msg -->
+          <div class="flex justify-end">
+            <div class="max-w-[85%] bg-cyan/15 border border-cyan/30 rounded-lg rounded-tr-sm px-3 py-2 text-[13px]">
+              <span class="text-cyan text-[10px] mono uppercase">you · 12:40</span>
+              <div class="mt-0.5">got <code class="mono text-green">[118]</code> at 10 kHz. fast.</div>
+            </div>
+          </div>
+          <!-- Agent msg -->
+          <div class="flex">
+            <div class="max-w-[90%] bg-surface border border-default rounded-lg rounded-tl-sm px-3 py-2 text-[13px]">
+              <span class="text-cyan text-[10px] mono uppercase">agent · 12:40</span>
+              <div class="mt-0.5 space-y-2">
+                <p><span class="text-green">✓</span> 0x76 (118) found. BME280 is on the default I2C address — so it's wiring, not address.</p>
+                <p>Pull-up is good, the chip is alive. The 100 kHz fail is signal integrity. Two fixes:</p>
+                <ul class="list-disc pl-5 space-y-1 text-dim">
+                  <li>Drop to <code class="mono">freq=50_000</code> for now (firmware-side fix)</li>
+                  <li>Shorten the jumper wires to &lt;10 cm (hardware fix)</li>
+                </ul>
+                <p>I can apply either or both. Which first?</p>
+              </div>
+              <div class="mt-2 pt-2 border-t border-default flex items-center gap-2 text-[10px] mono text-muted">
+                <span>waiting for your choice</span>
+                <span class="ml-auto text-cyan">↩ apply both</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- Composer -->
+        <div class="border-t border-default p-2">
+          <div class="bg-bg border border-default rounded-lg p-2 text-[12px]">
+            <textarea class="w-full bg-transparent outline-none resize-none placeholder:text-muted" rows="2" placeholder="Ask the agent — it has access to your project, the KB, and HAL." aria-label="Ask the agent"></textarea>
+            <div class="flex items-center justify-between mt-1 text-[10px] mono text-muted">
+              <div class="flex items-center gap-1.5">
+                <span class="px-1.5 py-0.5 bg-surface-2 border border-default rounded text-cyan">@project</span>
+                <span class="px-1.5 py-0.5 bg-surface-2 border border-default rounded">@device</span>
+                <span class="px-1.5 py-0.5 bg-surface-2 border border-default rounded">@kb</span>
+              </div>
+              <button class="px-2 py-0.5 bg-cyan text-bg rounded font-medium cursor-pointer">send ⏎</button>
+            </div>
+          </div>
+        </div>
+      </aside>
+    </div>
+
+    <!-- ====================== STATUS BAR (the control surface) ====================== -->
+    <div class="h-7 border-t border-default bg-surface-2 flex items-center px-2 text-[11px] mono select-none" role="status" aria-label="Status bar">
+
+      <!-- Git branch -->
+      <button class="flex items-center gap-1 px-2 h-full hover:bg-surface cursor-pointer" aria-label="Git branch: main, clean">
+        <span class="text-cyan">⎇</span><span class="text-default">main</span>
+        <span class="text-green">✓</span>
+      </button>
+
+      <span class="h-3 w-px bg-default/10 mx-1"></span>
+
+      <!-- Current device -->
+      <button class="flex items-center gap-1 px-2 h-full hover:bg-surface cursor-pointer" aria-label="Current device">
+        <span class="h-1.5 w-1.5 rounded-full bg-green"></span>
+        <span class="text-default">esp32s3-left</span>
+        <span class="text-muted">· 240 MHz</span>
+      </button>
+
+      <span class="h-3 w-px bg-default/10 mx-1"></span>
+
+      <!-- Tests -->
+      <button class="flex items-center gap-1 px-2 h-full hover:bg-surface cursor-pointer" aria-label="Tests: 3 passing">
+        <span class="text-green">✓</span><span class="text-default">3/3</span><span class="text-muted">tests</span>
+      </button>
+
+      <span class="h-3 w-px bg-default/10 mx-1"></span>
+
+      <!-- Plugin + firmware -->
+      <span class="px-2 h-full flex items-center text-dim gap-2">
+        <span>tinkr-esp32 1.2.3</span>
+        <span>·</span>
+        <span>micropython 1.24.1</span>
+      </span>
+
+      <div class="flex-1"></div>
+
+      <!-- Capture triggers (right side) -->
+      <div class="flex items-center gap-1 mr-2" aria-label="Capture trigger availability">
+        <span class="text-muted text-[10px] mr-1">capture:</span>
+        <span class="px-1.5 py-0.5 rounded border border-default text-muted" title="Recipe trigger available">recipe</span>
+        <span class="px-1.5 py-0.5 rounded border border-default text-muted" title="Fix trigger available">fix</span>
+        <span class="px-1.5 py-0.5 rounded border border-default text-muted" title="Chip trigger available">chip</span>
+        <span class="px-1.5 py-0.5 rounded border border-default text-muted" title="Pattern trigger available">pattern</span>
+        <span class="px-1.5 py-0.5 rounded border border-default text-muted" title="Publish trigger available">publish</span>
+      </div>
+
+      <!-- Capture suggestion badge (THE moment) -->
+      <button class="flex items-center gap-1.5 px-2.5 h-5 rounded-full bg-cyan/15 border border-cyan/40 cursor-pointer" aria-label="1 capture suggestion available — click to review" title="1 capture suggestion: save the BME280 wiring as a pattern">
+        <span class="relative inline-flex h-2 w-2">
+          <span class="absolute inset-0 rounded-full bg-cyan pulse"></span>
+          <span class="relative inline-flex h-2 w-2 rounded-full bg-cyan"></span>
+        </span>
+        <span class="text-cyan text-[10.5px]">1 suggestion</span>
+        <span class="px-1 py-px rounded text-[9px] mono bg-cyan text-bg font-semibold">pattern</span>
+      </button>
+
+      <span class="h-3 w-px bg-default/10 mx-1"></span>
+
+      <!-- MCP server -->
+      <button class="flex items-center gap-1 px-2 h-full hover:bg-surface cursor-pointer" aria-label="MCP server: 2 sessions active">
+        <span class="h-1.5 w-1.5 rounded-full bg-blue"></span>
+        <span class="text-default">mcp</span>
+        <span class="text-muted">2</span>
+      </button>
+
+      <span class="h-3 w-px bg-default/10 mx-1"></span>
+
+      <!-- Position -->
+      <span class="px-2 text-muted">Ln 18, Col 14 · spaces: 4</span>
+    </div>
+  </div>
+
+  <!-- ====================== DESIGN NOTES PANEL ====================== -->
+  <section class="grid grid-cols-1 md:grid-cols-3 gap-4">
+    <div class="bg-surface border border-default rounded-lg p-4">
+      <div class="text-xs mono uppercase tracking-wider text-cyan">layout</div>
+      <h3 class="display text-lg font-semibold mt-1">Three panes, no toolbars</h3>
+      <p class="text-dim text-sm mt-2">Devices left, code center, agent right. The full vertical space belongs to the editor. Cross-cutting concerns (git, device, tests, plugins) live in a 28px status bar — never in a top toolbar.</p>
+    </div>
+    <div class="bg-surface border border-default rounded-lg p-4">
+      <div class="text-xs mono uppercase tracking-wider text-cyan">capture</div>
+      <h3 class="display text-lg font-semibold mt-1">Status bar, not a popup</h3>
+      <p class="text-dim text-sm mt-2">The capture badge pulses in the status bar when a trigger fires. Clicking opens a side panel — never a modal. The 5 trigger types (<code class="mono">recipe</code> · <code class="mono">fix</code> · <code class="mono">chip</code> · <code class="mono">pattern</code> · <code class="mono">publish</code>) are visible chips so the vocabulary is learned by seeing it.</p>
+    </div>
+    <div class="bg-surface border border-default rounded-lg p-4">
+      <div class="text-xs mono uppercase tracking-wider text-cyan">chrome</div>
+      <h3 class="display text-lg font-semibold mt-1">Native, not web</h3>
+      <p class="text-dim text-sm mt-2">Title bar shows project name + git branch + chip — the three things you scan first. Light + dark via ⌘⇧L. Window controls (close/min/max) follow the host OS convention. The Tauri shell weighs 8–40 MB, not 200+ MB like Electron.</p>
+    </div>
+  </section>
+
+</div>
+
+<footer class="border-t border-default mt-12">
+  <div class="max-w-[1500px] mx-auto px-6 py-6 flex items-center justify-between text-xs mono text-muted">
+    <div>tinkr 0.5.0 mockup 02 — tauri shell</div>
+    <div class="flex items-center gap-4">
+      <a href="01-cli-output.html" class="hover:text-cyan">← cli output</a>
+      <a href="03-marketplace.html" class="hover:text-cyan">marketplace →</a>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>

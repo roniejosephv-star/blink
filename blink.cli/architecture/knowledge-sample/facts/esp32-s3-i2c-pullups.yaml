@@ -1,0 +1,47 @@
+type: fact
+id: fact/esp32-s3-i2c-pullups
+category: hardware-quirk
+summary: "ESP32 I2C pins have no internal pull-up resistors"
+chips:
+  - esp32
+  - esp32s2
+  - esp32s3
+  - esp32c3
+  - esp32c6
+  - esp32c2
+related_errors:
+  - error/i2c-timeout
+  - error/i2c-nack
+detail: |
+  Unlike some MCUs (e.g., ATmega328 on Arduino Uno has internal pull-ups),
+  the ESP32 family's I2C pins have NO reliable internal pull-up resistors.
+
+  The "internal pull-up" option (machine.Pin.PULL_UP) on ESP32 is implemented
+  via a weak pull-up of ~45kΩ. This is too weak for most I2C devices at the
+  standard 100 kHz or 400 kHz bus speeds. I2C requires pull-ups in the
+  2.2kΩ–10kΩ range to meet the rise-time specification (the exact value
+  depends on bus capacitance, which depends on the number of devices and
+  trace length).
+
+  Symptoms of missing or weak pull-ups:
+  - I2C.scan() returns [] (no devices found)
+  - I2C.read() raises OSError: [Errno 110] ETIMEDOUT
+  - Intermittent communication (works sometimes, fails others)
+  - Logic analyzer shows SDA/SCL not reaching high within the required
+    rise time
+
+  The fix: add external 4.7kΩ pull-up resistors from SDA to 3.3V and from
+  SCL to 3.3V. The exact value depends on the bus speed and capacitance,
+  but 4.7kΩ is the standard starting point for most setups with 1-3 devices
+  on a short bus (under 30 cm of wire).
+
+  For a 3.3V system, use resistors rated for the voltage (most 1/4W resistors
+  are fine). For 5V-tolerant I2C buses (rare on ESP32 but possible with
+  level shifters), adjust the resistor values accordingly.
+sources:
+  - "https://www.espressif.com/sites/default/files/documentation/esp32-s3_datasheet.pdf"
+  - "https://www.i2c-bus.org/specification/"
+  - "https://www.espressif.com/sites/default/files/documentation/esp32_technical_reference_manual_en.pdf#i2c"
+verified_at: "2026-08-12"
+contributed_by: "@ronie"
+contributed_at: "2026-08-12T14:32:00Z"

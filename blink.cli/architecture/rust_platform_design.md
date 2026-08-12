@@ -1,4 +1,4 @@
-# Blink Platform — Rust Architecture Design
+# Tinkr Platform — Rust Architecture Design
 
 > **Vision**: Cursor IDE for Edge Devices — a Rust-native platform that dynamically detects, configures, programs, and manages ESP32 and similar microcontrollers via a cluster of Python CLI tools.
 
@@ -42,12 +42,12 @@
 │                    BLINK CLI CLUSTER (Python)                 │
 │                                                               │
 │  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐       │
-│  │ blink-   │ │ blink-   │ │ blink-   │ │ blink-   │       │
+│  │ tinkr-   │ │ tinkr-   │ │ tinkr-   │ │ tinkr-   │       │
 │  │ port-    │ │ flash-   │ │ repl-    │ │ fs-      │       │
 │  │ scan     │ │ firmware │ │ execute  │ │ upload   │       │
 │  └──────────┘ └──────────┘ └──────────┘ └──────────┘       │
 │  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐       │
-│  │ blink-   │ │ blink-   │ │ blink-   │ │ blink-   │       │
+│  │ tinkr-   │ │ tinkr-   │ │ tinkr-   │ │ tinkr-   │       │
 │  │ config-  │ │ pkg-     │ │ ai-      │ │ project- │       │
 │  │ dtr-rts  │ │ install  │ │ analyze  │ │ deploy   │       │
 │  └──────────┘ └──────────┘ └──────────┘ └──────────┘       │
@@ -146,7 +146,7 @@ Each Python CLI tool includes a manifest for Rust discovery:
 
 ```json
 {
-    "name": "blink-port-scan",
+    "name": "tinkr-port-scan",
     "version": "0.1.0",
     "tier": 1,
     "domain": "port",
@@ -170,7 +170,7 @@ Each Python CLI tool includes a manifest for Rust discovery:
 pub async fn invoke_tool(
     tool_name: &str,
     args: &[String],
-) -> Result<ToolResult, BlinkError> {
+) -> Result<ToolResult, TinkrError> {
     let mut child = tokio::process::Command::new(tool_name)
         .args(args)
         .stdin(Stdio::piped())

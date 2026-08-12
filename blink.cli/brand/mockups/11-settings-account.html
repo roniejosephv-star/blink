@@ -1,0 +1,752 @@
+<!doctype html>
+<!--
+  Tinkr Mockup 11 — Settings & Account (v1.5 surface)
+  ======================================================================
+  Design decisions:
+
+  1. SETTINGS FEELS LIKE SETTINGS. Calm, dense, scannable. No hero, no
+     marketing copy, no glow. The accent amber appears exactly twice:
+     the "Upgrade" CTA on the plan card and the destructive-warning
+     icon on the Danger zone. Everything else is cyan (info) or slate
+     (neutral). The page is meant to be a place a user visits to
+     change a thing and leave.
+
+  2. THREE-PANE WITHIN THE SHELL. The shell's left sidebar (project
+     tree) is present but in a quiet state — no project is open, so
+     the tree is empty/collapsed. The screen then layers its own
+     200-px settings nav (Account, Editor, Devices, ...) on the left
+     of the main area. Right rail carries the activity timeline.
+
+  3. ACCOUNT IS THE DEFAULT. Per the spec, Account is highlighted as
+     the active section on first paint. The other sections are
+     reachable in one click from the left nav; the activity rail
+     belongs only to this page.
+
+  4. CARDS DO ONE THING EACH. Profile · Plan · Connected accounts ·
+     Security · Danger zone. Each card is a labeled section with a
+     tight title row (title + a single primary action), a content
+     body, and a 1-px bottom border. No card uses a background fill;
+     the slate surfaces do the work.
+
+  5. PROFILE CARD USES A REAL AVATAR. Initials in a colored square
+     (violet — the agent/secondary color) read as a human. The
+     "Verified" badge is cyan, the only brand color on the card.
+
+  6. PLAN CARD MAKES THE COMPARISON. It tells the user which tier
+     they're on, what they get, when it renews, and where to manage.
+     The comparison line ("You're on Pro — CI builds, cloud sync,
+     priority support.") is the value prop, compressed.
+
+  7. DANGER ZONE IS A RED BORDER, NOT A RED FILL. A 1-px red border,
+     an amber warning icon, and a single "Delete account" button. No
+     red text body. The danger zone is always the last card on the
+     page — it is the last thing the eye lands on.
+
+  8. ACTIVITY RAIL IS FORENSIC. Last 5 logins · last 3 plan changes ·
+     last device connection. Each row is timestamped (mono), tagged
+     with a small icon, and one-line. No filters, no charts. It is
+     a place to glance, not to live.
+  ======================================================================
+-->
+<html lang="en" class="dark">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Tinkr — Settings · Account</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0B1120;
+    --surface: #0F172A;
+    --surface-2: #111827;
+    --surface-3: #1E293B;
+    --border: #1F2937;
+    --border-strong: #334155;
+    --text: #E2E8F0;
+    --text-dim: #94A3B8;
+    --text-muted: #64748B;
+    --cyan: #5EEAD4;
+    --cyan-15: rgba(94, 234, 212, 0.15);
+    --cyan-30: rgba(94, 234, 212, 0.30);
+    --amber: #FB923C;
+    --amber-15: rgba(251, 146, 60, 0.15);
+    --amber-30: rgba(251, 146, 60, 0.30);
+    --violet: #A78BFA;
+    --violet-15: rgba(167, 139, 250, 0.15);
+    --violet-30: rgba(167, 139, 250, 0.30);
+    --green: #10B981;
+    --green-15: rgba(16, 185, 129, 0.15);
+    --red: #EF4444;
+    --red-15: rgba(239, 68, 68, 0.15);
+  }
+  /* LIGHT MODE (toggle via JS or remove "dark" class on <html>) */
+  html.light {
+    --bg: #FAFAFA;
+    --surface: #FFFFFF;
+    --surface-2: #F1F5F9;
+    --surface-3: #E2E8F0;
+    --border: #E2E8F0;
+    --border-strong: #CBD5E1;
+    --text: #0F172A;
+    --text-dim: #475569;
+    --text-muted: #64748B;
+    --cyan: #0D9488;
+    --cyan-15: rgba(13, 148, 136, 0.10);
+    --cyan-30: rgba(13, 148, 136, 0.25);
+    --amber: #EA580C;
+    --amber-15: rgba(234, 88, 12, 0.10);
+    --amber-30: rgba(234, 88, 12, 0.25);
+    --violet: #7C3AED;
+    --violet-15: rgba(124, 58, 237, 0.10);
+    --violet-30: rgba(124, 58, 237, 0.25);
+  }
+  html, body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .mono { font-family: 'JetBrains Mono', ui-monospace, monospace; }
+  .display { font-family: 'Inter', system-ui, sans-serif; font-weight: 600; letter-spacing: -0.015em; }
+  .bg-bg { background-color: var(--bg); }
+  .bg-surface { background-color: var(--surface); }
+  .bg-surface-2 { background-color: var(--surface-2); }
+  .bg-surface-3 { background-color: var(--surface-3); }
+  .border-default { border-color: var(--border); }
+  .border-strong { border-color: var(--border-strong); }
+  .text-default { color: var(--text); }
+  .text-dim { color: var(--text-dim); }
+  .text-muted { color: var(--text-muted); }
+  .text-cyan { color: var(--cyan); }
+  .text-amber { color: var(--amber); }
+  .text-violet { color: var(--violet); }
+  .text-green { color: var(--green); }
+  .text-red { color: var(--red); }
+  .bg-cyan-soft { background-color: var(--cyan-15); }
+  .bg-amber-soft { background-color: var(--amber-15); }
+  .bg-violet-soft { background-color: var(--violet-15); }
+  .bg-green-soft { background-color: var(--green-15); }
+  .bg-red-soft { background-color: var(--red-15); }
+  .border-cyan-soft { border-color: var(--cyan-30); }
+  .border-amber-soft { border-color: var(--amber-30); }
+  .border-violet-soft { border-color: var(--violet-30); }
+  /* Focus ring — WCAG 2.4.7 */
+  *:focus-visible {
+    outline: 2px solid var(--cyan);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+  /* LED tinkr animation — 1 Hz, suppressed under reduced motion */
+  @keyframes led-tinkr {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.55; }
+  }
+  .led { animation: led-tinkr 1s ease-in-out infinite; }
+  @media (prefers-reduced-motion: reduce) {
+    .led { animation: none; }
+  }
+  .scrollbar::-webkit-scrollbar { width: 8px; height: 8px; }
+  .scrollbar::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+  .scrollbar::-webkit-scrollbar-track { background: transparent; }
+  .mac-chrome {
+    background: linear-gradient(180deg, #1E293B 0%, #0F172A 100%);
+  }
+  html.light .mac-chrome {
+    background: linear-gradient(180deg, #E2E8F0 0%, #CBD5E1 100%);
+  }
+  /* Settings nav active state */
+  .nav-item {
+    transition: background-color 0.1s ease, color 0.1s ease;
+  }
+  .nav-item:hover {
+    background-color: var(--surface-2);
+    color: var(--text);
+  }
+  .nav-item[aria-current="page"] {
+    background-color: var(--cyan-15);
+    color: var(--cyan);
+    border-left-color: var(--cyan);
+  }
+  /* Activity row */
+  .activity-row {
+    transition: background-color 0.1s ease;
+  }
+  .activity-row:hover {
+    background-color: var(--surface-2);
+  }
+</style>
+</head>
+<body class="min-h-screen">
+
+<!-- ================== FRAMING HEADER (mockup doc header) ================== -->
+<div class="max-w-[1500px] mx-auto px-6 py-8 space-y-6">
+
+  <header class="flex items-center justify-between">
+    <div>
+      <div class="text-xs mono uppercase tracking-widest text-cyan">v1.5 surface · settings · account</div>
+      <h1 class="display text-3xl md:text-4xl mt-2">Settings. <span class="text-cyan">Serious, on purpose.</span></h1>
+      <p class="text-dim mt-3 max-w-2xl">Settings is a place to change a thing and leave. The screen is calm, dense, and the brand only shows up where it carries information — verified status, plan tier, danger.</p>
+    </div>
+    <div class="flex items-center gap-2">
+      <a href="10-project-explorer.html" class="text-xs mono px-3 py-1.5 rounded-md bg-surface-2 border border-default hover:border-cyan-soft">← project explorer</a>
+      <a href="05-kb-viewer.html" class="text-xs mono px-3 py-1.5 rounded-md bg-surface-2 border border-default hover:border-cyan-soft">kb viewer →</a>
+    </div>
+  </header>
+
+  <!-- ================== THE IDE WINDOW ================== -->
+  <div class="rounded-xl overflow-hidden border border-default">
+
+    <!-- =========== TITLE BAR =========== -->
+    <div class="mac-chrome border-b border-default px-4 h-9 flex items-center gap-3 select-none" role="banner" aria-label="Window title bar">
+      <div class="flex items-center gap-1.5" role="group" aria-label="Window controls">
+        <button class="h-3 w-3 rounded-full bg-red-500 hover:bg-red-400 cursor-pointer" aria-label="Close window"></button>
+        <button class="h-3 w-3 rounded-full bg-amber-400 hover:bg-amber-300 cursor-pointer" aria-label="Minimize window"></button>
+        <button class="h-3 w-3 rounded-full bg-emerald-500 hover:bg-emerald-400 cursor-pointer" aria-label="Maximize window"></button>
+      </div>
+      <div class="flex-1 text-center text-[11px] mono text-dim">
+        <span class="text-default">bl<span class="text-amber led inline-block">●</span>nk</span> <span class="text-muted mx-1">·</span> <span class="text-default">settings</span> <span class="text-muted mx-1">·</span> <span class="text-default">account</span>
+      </div>
+      <div class="flex items-center gap-2 text-[11px] mono text-muted" role="group" aria-label="Title bar actions">
+        <button onclick="document.documentElement.classList.toggle('light')" class="px-2 py-0.5 rounded hover:bg-surface-2 cursor-pointer" aria-label="Toggle light/dark theme" title="Toggle theme (⌘⇧L)">
+          <span class="dark:hidden">☀ light</span>
+          <span class="hidden dark:inline">◐ dark</span>
+        </button>
+        <span class="text-muted">⌘, prefs</span>
+      </div>
+    </div>
+
+    <!-- =========== TOP BAR =========== -->
+    <div class="h-12 border-b border-default bg-surface flex items-center px-4 gap-4" role="region" aria-label="Top bar">
+      <a href="10-project-explorer.html" class="flex items-center gap-2 cursor-pointer" aria-label="Tinkr home">
+        <span class="relative inline-flex h-5 w-5 items-center justify-center">
+          <span class="absolute inset-0 rounded-md bg-cyan-soft"></span>
+          <span class="relative h-2 w-2 rounded-sm bg-cyan"></span>
+        </span>
+        <span class="display text-[15px]">bl<span class="text-amber led inline-block">●</span>nk</span>
+      </a>
+      <div class="flex items-center gap-1.5 text-[13px] text-dim">
+        <a href="10-project-explorer.html" class="text-muted hover:text-default">workspace</a>
+        <span class="text-muted">/</span>
+        <span class="text-default">settings</span>
+        <span class="text-muted">/</span>
+        <span class="text-default">account</span>
+      </div>
+      <div class="flex-1"></div>
+      <button class="flex items-center gap-2 px-2.5 py-1 rounded-md hover:bg-surface-2 cursor-pointer text-[12px]" aria-label="Select active device">
+        <span class="h-1.5 w-1.5 rounded-full bg-green" aria-label="Online"></span>
+        <span class="text-default">esp32s3-left</span>
+        <span class="text-muted">·</span>
+        <span class="text-dim">ESP32-S3</span>
+        <svg class="h-3 w-3 text-muted" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.06l3.71-3.83a.75.75 0 111.08 1.04l-4.25 4.39a.75.75 0 01-1.08 0L5.21 8.27a.75.75 0 01.02-1.06z" clip-rule="evenodd"/></svg>
+      </button>
+      <div class="flex items-center gap-1.5 px-2.5 py-1 text-[11px] mono text-dim" aria-label="Sync status">
+        <svg class="h-3.5 w-3.5 text-green" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+        <span>synced</span>
+      </div>
+      <button class="h-7 w-7 rounded-full bg-violet-soft border border-violet-soft text-violet text-[11px] mono font-semibold cursor-pointer" aria-label="Account menu">RJ</button>
+    </div>
+
+    <!-- =========== MAIN: SHELL SIDEBAR + SETTINGS NAV + CONTENT + RAIL =========== -->
+    <div class="grid grid-cols-[220px_200px_1fr_300px] h-[820px] bg-bg">
+
+      <!-- ============== SHELL SIDEBAR: PROJECT TREE (empty state) ============== -->
+      <aside class="border-r border-default bg-surface-2 flex flex-col" aria-label="Project tree">
+        <div class="px-3 h-9 flex items-center justify-between border-b border-default text-[11px] mono uppercase tracking-wider text-dim">
+          <span>workspace</span>
+        </div>
+        <div class="flex-1 flex flex-col items-center justify-center text-center px-4 py-6 text-dim">
+          <svg class="h-8 w-8 text-muted mb-2" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M2 4.75A1.75 1.75 0 013.75 3h4.5a1.75 1.75 0 011.328.594l.828 1.032A.25.25 0 0010.5 4.75h5.75A1.75 1.75 0 0118 6.5v9.75A1.75 1.75 0 0116.25 18H3.75A1.75 1.75 0 012 16.25V4.75z"/></svg>
+          <p class="text-[12px] mb-3">No project open.</p>
+          <a href="10-project-explorer.html" class="text-[11px] mono text-cyan hover:opacity-80 cursor-pointer">Open a project →</a>
+        </div>
+        <div class="border-t border-default p-3 text-[11px] mono text-dim">
+          <div class="flex items-center justify-between">
+            <span>9 projects</span>
+            <span class="text-cyan">2 git-backed</span>
+          </div>
+        </div>
+      </aside>
+
+      <!-- ============== SETTINGS NAV (200px, inside main area) ============== -->
+      <nav class="border-r border-default bg-bg flex flex-col" aria-label="Settings sections">
+        <div class="px-3 h-9 flex items-center border-b border-default text-[11px] mono uppercase tracking-wider text-dim">
+          <span>settings</span>
+        </div>
+        <div class="flex-1 py-2" role="list">
+          <!-- Active: Account -->
+          <a href="#" class="nav-item flex items-center gap-2.5 px-4 py-2 text-[13px] text-dim border-l-2 border-transparent" aria-current="page" role="listitem">
+            <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-5.5-2.5a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0zM10 12a5.99 5.99 0 00-4.792 2.546A6.002 6.002 0 0010 16a6.002 6.002 0 004.792-2.546A5.99 5.99 0 0010 12z" clip-rule="evenodd"/></svg>
+            <span>Account</span>
+          </a>
+          <a href="#" class="nav-item flex items-center gap-2.5 px-4 py-2 text-[13px] text-dim border-l-2 border-transparent" role="listitem">
+            <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M4.25 5.5a.75.75 0 00-.75.75v8.5c0 .414.336.75.75.75h11.5a.75.75 0 00.75-.75v-8.5a.75.75 0 00-.75-.75H4.25zM6 7.75a.75.75 0 01.75-.75h6.5a.75.75 0 010 1.5h-6.5A.75.75 0 016 7.75zm0 3a.75.75 0 01.75-.75h3.5a.75.75 0 010 1.5h-3.5a.75.75 0 01-.75-.75z" clip-rule="evenodd"/></svg>
+            <span>Editor preferences</span>
+          </a>
+          <a href="#" class="nav-item flex items-center gap-2.5 px-4 py-2 text-[13px] text-dim border-l-2 border-transparent" role="listitem">
+            <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M7 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-2V3a1 1 0 10-2 0v1H8V3a1 1 0 00-1-1zM4 9h12v7H4V9z"/></svg>
+            <span>Devices</span>
+            <span class="ml-auto text-[10px] mono text-muted">2</span>
+          </a>
+          <a href="#" class="nav-item flex items-center gap-2.5 px-4 py-2 text-[13px] text-dim border-l-2 border-transparent" role="listitem">
+            <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M3 4a2 2 0 012-2h10a2 2 0 012 2v12a2 2 0 01-2 2H5a2 2 0 01-2-2V4zm3 5a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm0 4a1 1 0 011-1h4a1 1 0 110 2H7a1 1 0 01-1-1z"/></svg>
+            <span>Plugins</span>
+            <span class="ml-auto text-[10px] mono text-muted">7</span>
+          </a>
+          <a href="05-kb-viewer.html" class="nav-item flex items-center gap-2.5 px-4 py-2 text-[13px] text-dim border-l-2 border-transparent" role="listitem">
+            <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M9 4.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zm6.5 0a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zM6 9.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zm9 0a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zM9 14.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zm6.5 0a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0z"/></svg>
+            <span>Knowledge base</span>
+          </a>
+          <a href="#" class="nav-item flex items-center gap-2.5 px-4 py-2 text-[13px] text-dim border-l-2 border-transparent" role="listitem">
+            <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M10 2a4 4 0 00-4 4v2H5a3 3 0 00-3 3v5a3 3 0 003 3h10a3 3 0 003-3v-5a3 3 0 00-3-3h-1V6a4 4 0 00-4-4zm-2 6V6a2 2 0 114 0v2H8z"/></svg>
+            <span>Cloud &amp; sync</span>
+          </a>
+          <a href="#" class="nav-item flex items-center gap-2.5 px-4 py-2 text-[13px] text-dim border-l-2 border-transparent" role="listitem">
+            <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M2 5a2 2 0 012-2h12a2 2 0 012 2v2a2 2 0 100 4v2a2 2 0 01-2 2H4a2 2 0 01-2-2v-2a2 2 0 100-4V5z"/></svg>
+            <span>Billing</span>
+          </a>
+          <a href="#" class="nav-item flex items-center gap-2.5 px-4 py-2 text-[13px] text-dim border-l-2 border-transparent" role="listitem">
+            <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M10 1.5l6.5 3.75v3.5c0 4.5-3 8.5-6.5 9.75C6.5 17.25 3.5 13.25 3.5 8.75v-3.5L10 1.5z" clip-rule="evenodd"/></svg>
+            <span>Telemetry &amp; privacy</span>
+          </a>
+          <a href="#" class="nav-item flex items-center gap-2.5 px-4 py-2 text-[13px] text-dim border-l-2 border-transparent" role="listitem">
+            <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a.75.75 0 000 1.5h.253a.25.25 0 01.244.304l-.459 2.066A1.75 1.75 0 0010.747 15H11a.75.75 0 000-1.5h-.253a.25.25 0 01-.244-.304l.459-2.066A1.75 1.75 0 009.253 9H9z" clip-rule="evenodd"/></svg>
+            <span>About</span>
+          </a>
+        </div>
+        <div class="border-t border-default p-3 text-[10px] mono text-muted">
+          v0.7.3 · build 4a2f1c
+        </div>
+      </nav>
+
+      <!-- ============== MAIN CONTENT: ACCOUNT ============== -->
+      <main class="overflow-y-auto scrollbar" aria-label="Account settings">
+
+        <!-- Section header -->
+        <header class="px-8 pt-8 pb-4 border-b border-default">
+          <div class="text-[11px] mono uppercase tracking-widest text-cyan">settings</div>
+          <h2 class="display text-2xl mt-1">Account</h2>
+          <p class="text-dim text-[13px] mt-1.5">Your identity, plan, connected services, and security. Changes save automatically.</p>
+        </header>
+
+        <div class="px-8 py-6 space-y-6">
+
+          <!-- ============ PROFILE CARD ============ -->
+          <section class="bg-surface border border-default rounded-lg" aria-labelledby="profile-h">
+            <div class="flex items-center justify-between px-5 py-3 border-b border-default">
+              <h3 id="profile-h" class="display text-[14px]">Profile</h3>
+              <button class="text-[12px] text-cyan hover:opacity-80 cursor-pointer" aria-label="Edit profile">Edit</button>
+            </div>
+            <div class="p-5 flex items-start gap-5">
+              <!-- Avatar -->
+              <div class="h-16 w-16 rounded-full bg-violet-soft border-2 border-violet-soft flex items-center justify-center text-violet text-[20px] mono font-semibold flex-shrink-0" aria-label="Avatar with initials RJ">RJ</div>
+              <!-- Details -->
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-2 flex-wrap">
+                  <span class="display text-[16px]">Ronie Joseph</span>
+                  <span class="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] mono bg-cyan-soft border border-cyan-soft text-cyan rounded">
+                    <svg class="h-2.5 w-2.5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+                    Verified
+                  </span>
+                </div>
+                <div class="text-[12px] mono text-dim mt-1">ronie@tinkr.build</div>
+                <div class="grid grid-cols-2 gap-x-6 gap-y-1.5 mt-4 text-[12px]">
+                  <div>
+                    <div class="text-muted">GitHub handle</div>
+                    <div class="mono text-default mt-0.5">@roniejoseph</div>
+                  </div>
+                  <div>
+                    <div class="text-muted">Public email</div>
+                    <div class="mono text-default mt-0.5">ronie@tinkr.build</div>
+                  </div>
+                  <div>
+                    <div class="text-muted">Display name</div>
+                    <div class="text-default mt-0.5">Ronie Joseph</div>
+                  </div>
+                  <div>
+                    <div class="text-muted">Pronouns</div>
+                    <div class="text-default mt-0.5">he/him</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- ============ PLAN CARD ============ -->
+          <section class="bg-surface border border-default rounded-lg" aria-labelledby="plan-h">
+            <div class="flex items-center justify-between px-5 py-3 border-b border-default">
+              <h3 id="plan-h" class="display text-[14px]">Plan</h3>
+              <a href="#" class="text-[12px] text-cyan hover:opacity-80 cursor-pointer" aria-label="Manage plan and billing">Manage</a>
+            </div>
+            <div class="p-5">
+              <div class="flex items-center gap-3 flex-wrap">
+                <span class="display text-[18px]">Tinkr Pro</span>
+                <span class="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] mono bg-amber-soft border border-amber-soft text-amber rounded">
+                  <svg class="h-2.5 w-2.5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.286 3.957a1 1 0 00.95.69h4.162c.969 0 1.371 1.24.588 1.81l-3.367 2.446a1 1 0 00-.364 1.118l1.287 3.957c.3.921-.755 1.688-1.539 1.118l-3.366-2.446a1 1 0 00-1.176 0L5.955 17.92c-.783.57-1.838-.197-1.539-1.118l1.287-3.957a1 1 0 00-.364-1.118L1.972 9.382c-.784-.57-.38-1.81.588-1.81h4.162a1 1 0 00.95-.69l1.286-3.954z"/></svg>
+                  $9 / month
+                </span>
+                <span class="text-[11px] mono text-muted">renews Nov 12, 2026</span>
+              </div>
+              <p class="text-[13px] text-dim mt-3">
+                You're on <span class="text-default">Pro</span> — you have <span class="text-cyan">CI builds</span>, <span class="text-cyan">cloud sync</span>, and <span class="text-cyan">priority support</span>. 4 free plugin projects included; per-plugin updates billed annually.
+              </p>
+              <div class="mt-4 grid grid-cols-3 gap-3 text-[11px]">
+                <div class="bg-surface-2 border border-default rounded-md p-2.5">
+                  <div class="text-muted">Plugin projects</div>
+                  <div class="display text-default text-[14px] mt-0.5">7 <span class="text-muted text-[10px]">/ ∞</span></div>
+                  <div class="text-muted text-[10px] mt-0.5">4 free included</div>
+                </div>
+                <div class="bg-surface-2 border border-default rounded-md p-2.5">
+                  <div class="text-muted">Cloud storage</div>
+                  <div class="display text-default text-[14px] mt-0.5">2.3 GB <span class="text-muted text-[10px]">/ 50 GB</span></div>
+                  <div class="text-muted text-[10px] mt-0.5">≈ 60 projects</div>
+                </div>
+                <div class="bg-surface-2 border border-default rounded-md p-2.5">
+                  <div class="text-muted">CI build minutes</div>
+                  <div class="display text-default text-[14px] mt-0.5">142 <span class="text-muted text-[10px]">/ 500</span></div>
+                  <div class="text-amber text-[10px] mt-0.5">resets in 14d</div>
+                </div>
+              </div>
+              <div class="mt-4 pt-4 border-t border-default flex items-center justify-between text-[12px]">
+                <div class="text-dim">
+                  <span class="text-default">Next charge</span> · Nov 12, 2026 · $9.00 USD
+                </div>
+                <div class="flex items-center gap-3">
+                  <a href="#" class="text-dim hover:text-default cursor-pointer">Update payment</a>
+                  <a href="#" class="text-red hover:opacity-80 cursor-pointer">Cancel plan</a>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- ============ CONNECTED ACCOUNTS CARD ============ -->
+          <section class="bg-surface border border-default rounded-lg" aria-labelledby="conn-h">
+            <div class="flex items-center justify-between px-5 py-3 border-b border-default">
+              <h3 id="conn-h" class="display text-[14px]">Connected accounts</h3>
+              <span class="text-[11px] mono text-muted">2 of 4 connected</span>
+            </div>
+            <ul class="divide-y divide-[color:var(--border)]">
+              <!-- GitHub -->
+              <li class="px-5 py-3.5 flex items-center gap-4">
+                <div class="h-9 w-9 rounded-md bg-surface-2 border border-default flex items-center justify-center flex-shrink-0">
+                  <svg class="h-5 w-5 text-default" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+                </div>
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-center gap-2">
+                    <span class="text-[14px]">GitHub</span>
+                    <span class="inline-flex items-center gap-1 text-[10px] mono text-green">
+                      <span class="h-1.5 w-1.5 rounded-full bg-green" aria-hidden="true"></span>
+                      Connected
+                    </span>
+                  </div>
+                  <div class="text-[11px] mono text-muted mt-0.5">@roniejoseph · primary · 4 repos linked</div>
+                </div>
+                <div class="flex items-center gap-2">
+                  <a href="#" class="text-[11px] text-dim hover:text-default cursor-pointer">Manage</a>
+                  <span class="text-muted">·</span>
+                  <button class="text-[11px] text-red hover:opacity-80 cursor-pointer" aria-label="Disconnect GitHub">Disconnect</button>
+                </div>
+              </li>
+              <!-- Email -->
+              <li class="px-5 py-3.5 flex items-center gap-4">
+                <div class="h-9 w-9 rounded-md bg-surface-2 border border-default flex items-center justify-center flex-shrink-0">
+                  <svg class="h-5 w-5 text-default" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M3 4a2 2 0 00-2 2v1.161l8.441 4.221a1.25 1.25 0 001.118 0L19 7.162V6a2 2 0 00-2-2H3zM19 8.839l-7.77 3.885a2.75 2.75 0 01-2.46 0L1 8.839V14a2 2 0 002 2h14a2 2 0 002-2V8.839z"/></svg>
+                </div>
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-center gap-2">
+                    <span class="text-[14px]">Email</span>
+                    <span class="inline-flex items-center gap-1 text-[10px] mono text-green">
+                      <span class="h-1.5 w-1.5 rounded-full bg-green" aria-hidden="true"></span>
+                      Connected
+                    </span>
+                    <span class="inline-flex items-center gap-1 text-[10px] mono text-cyan bg-cyan-soft border border-cyan-soft px-1.5 py-0.5 rounded">primary</span>
+                  </div>
+                  <div class="text-[11px] mono text-muted mt-0.5">ronie@tinkr.build · verified · used for billing &amp; security alerts</div>
+                </div>
+                <div class="flex items-center gap-2">
+                  <a href="#" class="text-[11px] text-dim hover:text-default cursor-pointer">Manage</a>
+                </div>
+              </li>
+              <!-- Discord (not connected) -->
+              <li class="px-5 py-3.5 flex items-center gap-4">
+                <div class="h-9 w-9 rounded-md bg-surface-2 border border-default flex items-center justify-center flex-shrink-0">
+                  <svg class="h-5 w-5 text-muted" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M16.942 5.226a14.85 14.85 0 00-1.143-.467 8.485 8.485 0 00-.39-.092c-.04-.012-.077-.022-.116-.034a8.4 8.4 0 00-4.293 0c-.039.012-.077.022-.116.034a8.485 8.485 0 00-.39.092 14.85 14.85 0 00-1.143.467 15.25 15.25 0 00-2.228 1.282c-.29 1.405-.461 2.83-.461 4.252 0 1.422.171 2.847.461 4.252a15.25 15.25 0 002.228 1.282 14.85 14.85 0 001.143.467c.13.04.26.077.39.092.039.012.077.022.116.034a8.4 8.4 0 004.293 0c.039-.012.077-.022.116-.034.13-.015.26-.052.39-.092a14.85 14.85 0 001.143-.467 15.25 15.25 0 002.228-1.282c.29-1.405.461-2.83.461-4.252 0-1.422-.171-2.847-.461-4.252a15.25 15.25 0 00-2.228-1.282z"/></svg>
+                </div>
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-center gap-2">
+                    <span class="text-[14px] text-dim">Discord</span>
+                    <span class="inline-flex items-center gap-1 text-[10px] mono text-muted">
+                      <span class="h-1.5 w-1.5 rounded-full bg-muted" aria-hidden="true"></span>
+                      Not connected
+                    </span>
+                  </div>
+                  <div class="text-[11px] mono text-muted mt-0.5">Community support &amp; creator chat</div>
+                </div>
+                <button class="px-2.5 py-1 text-[11px] border border-default rounded hover:border-cyan-soft text-dim hover:text-default cursor-pointer" aria-label="Connect Discord">Connect</button>
+              </li>
+              <!-- X (not connected) -->
+              <li class="px-5 py-3.5 flex items-center gap-4">
+                <div class="h-9 w-9 rounded-md bg-surface-2 border border-default flex items-center justify-center flex-shrink-0">
+                  <svg class="h-4 w-4 text-muted" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M15.27 2.46h2.59l-5.66 6.47 6.66 8.81h-5.21l-4.08-5.34-4.67 5.34H2.31l6.05-6.92L1.99 2.46h5.34l3.69 4.86 4.25-4.86zm-.91 13.79h1.43L5.7 3.7H4.18l10.18 12.55z"/></svg>
+                </div>
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-center gap-2">
+                    <span class="text-[14px] text-dim">X (Twitter)</span>
+                    <span class="inline-flex items-center gap-1 text-[10px] mono text-muted">
+                      <span class="h-1.5 w-1.5 rounded-full bg-muted" aria-hidden="true"></span>
+                      Not connected
+                    </span>
+                  </div>
+                  <div class="text-[11px] mono text-muted mt-0.5">Optional · release announcements only</div>
+                </div>
+                <button class="px-2.5 py-1 text-[11px] border border-default rounded hover:border-cyan-soft text-dim hover:text-default cursor-pointer" aria-label="Connect X">Connect</button>
+              </li>
+            </ul>
+          </section>
+
+          <!-- ============ SECURITY CARD ============ -->
+          <section class="bg-surface border border-default rounded-lg" aria-labelledby="sec-h">
+            <div class="flex items-center justify-between px-5 py-3 border-b border-default">
+              <h3 id="sec-h" class="display text-[14px]">Security</h3>
+              <a href="#" class="text-[12px] text-cyan hover:opacity-80 cursor-pointer" aria-label="Manage security settings">Manage sessions</a>
+            </div>
+            <ul class="divide-y divide-[color:var(--border)]">
+              <!-- 2FA -->
+              <li class="px-5 py-3.5 flex items-center gap-4">
+                <div class="h-9 w-9 rounded-md bg-green-soft border border-green-soft flex items-center justify-center flex-shrink-0">
+                  <svg class="h-5 w-5 text-green" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M10 1.5l6.5 3.75v3.5c0 4.5-3 8.5-6.5 9.75C6.5 17.25 3.5 13.25 3.5 8.75v-3.5L10 1.5z" clip-rule="evenodd"/></svg>
+                </div>
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-center gap-2">
+                    <span class="text-[14px]">Two-factor authentication</span>
+                    <span class="inline-flex items-center gap-1 text-[10px] mono text-green">
+                      <span class="h-1.5 w-1.5 rounded-full bg-green" aria-hidden="true"></span>
+                      Enabled
+                    </span>
+                  </div>
+                  <div class="text-[11px] mono text-muted mt-0.5">Authenticator app · backup codes: 8 remaining</div>
+                </div>
+                <button class="px-2.5 py-1 text-[11px] border border-default rounded hover:border-cyan-soft text-dim hover:text-default cursor-pointer" aria-label="Reconfigure 2FA">Reconfigure</button>
+              </li>
+              <!-- Last login -->
+              <li class="px-5 py-3.5 flex items-center gap-4">
+                <div class="h-9 w-9 rounded-md bg-surface-2 border border-default flex items-center justify-center flex-shrink-0">
+                  <svg class="h-5 w-5 text-dim" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M3 4.25A2.25 2.25 0 015.25 2h5.5A2.25 2.25 0 0113 4.25v2a.75.75 0 01-1.5 0v-2a.75.75 0 00-.75-.75h-5.5a.75.75 0 00-.75.75v11.5c0 .414.336.75.75.75h5.5a.75.75 0 00.75-.75v-2a.75.75 0 011.5 0v2A2.25 2.25 0 0110.75 18h-5.5A2.25 2.25 0 013 15.75V4.25z" clip-rule="evenodd"/><path fill-rule="evenodd" d="M16.78 9.47a.75.75 0 010 1.06l-2.25 2.25a.75.75 0 01-1.06 0L12 11.31l-.97.97a.75.75 0 11-1.06-1.06l1.5-1.5a.75.75 0 011.06 0l.97.97 1.22-1.22a.75.75 0 011.06 0z" clip-rule="evenodd"/></svg>
+                </div>
+                <div class="flex-1 min-w-0">
+                  <div class="text-[14px]">Last login</div>
+                  <div class="text-[11px] mono text-muted mt-0.5">MacBook Pro · Mumbai · 12 min ago</div>
+                </div>
+                <a href="#" class="text-[11px] text-dim hover:text-default cursor-pointer">View all 3 sessions →</a>
+              </li>
+              <!-- Password -->
+              <li class="px-5 py-3.5 flex items-center gap-4">
+                <div class="h-9 w-9 rounded-md bg-surface-2 border border-default flex items-center justify-center flex-shrink-0">
+                  <svg class="h-5 w-5 text-dim" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M10 1a4.5 4.5 0 00-4.5 4.5V9H5a2 2 0 00-2 2v6a2 2 0 002 2h10a2 2 0 002-2v-6a2 2 0 00-2-2h-.5V5.5A4.5 4.5 0 0010 1zm3 8V5.5a3 3 0 10-6 0V9h6z" clip-rule="evenodd"/></svg>
+                </div>
+                <div class="flex-1 min-w-0">
+                  <div class="text-[14px]">Password</div>
+                  <div class="text-[11px] mono text-muted mt-0.5">Last changed 47 days ago</div>
+                </div>
+                <button class="px-2.5 py-1 text-[11px] border border-default rounded hover:border-cyan-soft text-dim hover:text-default cursor-pointer" aria-label="Change password">Change</button>
+              </li>
+            </ul>
+          </section>
+
+          <!-- ============ DANGER ZONE ============ -->
+          <section class="border border-red rounded-lg" aria-labelledby="danger-h">
+            <div class="flex items-center gap-2 px-5 py-3 border-b border-red bg-red-soft">
+              <svg class="h-4 w-4 text-red" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 6a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 6zm0 9a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd"/></svg>
+              <h3 id="danger-h" class="display text-[14px] text-red">Danger zone</h3>
+            </div>
+            <div class="p-5">
+              <div class="flex items-start justify-between gap-6">
+                <div>
+                  <div class="text-[14px]">Delete this account</div>
+                  <p class="text-[12px] text-dim mt-1 max-w-md">
+                    Permanently deletes your account, projects, plugins, and KB contributions. This cannot be undone. 30 days of soft-delete, then purged.
+                  </p>
+                </div>
+                <button class="px-3 py-1.5 text-[12px] border border-red text-red rounded-md hover:bg-red-soft flex-shrink-0 cursor-pointer" aria-label="Delete account (opens confirmation modal)">
+                  Delete account
+                </button>
+              </div>
+            </div>
+          </section>
+
+          <div class="text-[11px] mono text-muted text-center pt-2 pb-4">
+            Last updated 2 min ago · all changes saved locally and to cloud
+          </div>
+        </div>
+      </main>
+
+      <!-- ============== RIGHT RAIL: ACTIVITY TIMELINE (Account only) ============== -->
+      <aside class="border-l border-default bg-surface-2 overflow-y-auto scrollbar" aria-label="Recent activity">
+        <div class="px-4 h-9 flex items-center border-b border-default text-[11px] mono uppercase tracking-wider text-dim">
+          <span>Recent activity</span>
+        </div>
+
+        <div class="p-4 space-y-5">
+
+          <!-- Last 5 logins -->
+          <section aria-labelledby="logins-h">
+            <h4 id="logins-h" class="display text-[11px] uppercase tracking-wider text-muted mb-2">Logins</h4>
+            <ul class="space-y-0.5 -mx-1">
+              <li class="activity-row flex items-start gap-2.5 px-1 py-1.5 rounded">
+                <span class="h-1.5 w-1.5 rounded-full bg-green mt-1.5 flex-shrink-0" aria-hidden="true"></span>
+                <div class="flex-1 min-w-0">
+                  <div class="text-[12px] truncate">MacBook Pro · Mumbai</div>
+                  <div class="text-[10px] mono text-muted">12 min ago · this device</div>
+                </div>
+              </li>
+              <li class="activity-row flex items-start gap-2.5 px-1 py-1.5 rounded">
+                <span class="h-1.5 w-1.5 rounded-full bg-muted mt-1.5 flex-shrink-0" aria-hidden="true"></span>
+                <div class="flex-1 min-w-0">
+                  <div class="text-[12px] truncate text-dim">iPhone 15 · Tinkr iOS</div>
+                  <div class="text-[10px] mono text-muted">yesterday · 18:22</div>
+                </div>
+              </li>
+              <li class="activity-row flex items-start gap-2.5 px-1 py-1.5 rounded">
+                <span class="h-1.5 w-1.5 rounded-full bg-muted mt-1.5 flex-shrink-0" aria-hidden="true"></span>
+                <div class="flex-1 min-w-0">
+                  <div class="text-[12px] truncate text-dim">Workstation · Bengaluru</div>
+                  <div class="text-[10px] mono text-muted">3 days ago · 11:04</div>
+                </div>
+              </li>
+              <li class="activity-row flex items-start gap-2.5 px-1 py-1.5 rounded">
+                <span class="h-1.5 w-1.5 rounded-full bg-muted mt-1.5 flex-shrink-0" aria-hidden="true"></span>
+                <div class="flex-1 min-w-0">
+                  <div class="text-[12px] truncate text-dim">iPad · Tinkr tablet</div>
+                  <div class="text-[10px] mono text-muted">8 days ago</div>
+                </div>
+              </li>
+              <li class="activity-row flex items-start gap-2.5 px-1 py-1.5 rounded">
+                <span class="h-1.5 w-1.5 rounded-full bg-red mt-1.5 flex-shrink-0" aria-hidden="true"></span>
+                <div class="flex-1 min-w-0">
+                  <div class="text-[12px] truncate text-dim">Unknown · Singapore</div>
+                  <div class="text-[10px] mono text-red">14 days ago · blocked</div>
+                </div>
+              </li>
+            </ul>
+          </section>
+
+          <!-- Last 3 plan changes -->
+          <section aria-labelledby="plan-act-h">
+            <h4 id="plan-act-h" class="display text-[11px] uppercase tracking-wider text-muted mb-2">Plan changes</h4>
+            <ul class="space-y-0.5 -mx-1">
+              <li class="activity-row flex items-start gap-2.5 px-1 py-1.5 rounded">
+                <svg class="h-3 w-3 text-amber mt-0.5 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M8.433 7.418c.155-.103.346-.196.567-.267v1.698a2.305 2.305 0 01-.567-.267C8.07 8.34 8 8.114 8 8c0-.114.07-.34.433-.582zM11 12.849v-1.698c.22.071.412.164.567.267.364.243.433.468.433.582 0 .114-.07.34-.433.582a2.305 2.305 0 01-.567.267z"/><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm.75-11.75a.75.75 0 00-1.5 0v.541c-.42.087-.808.233-1.131.464-.36.256-.619.62-.619 1.12 0 .466.26.85.619 1.12.323.231.71.377 1.131.464v1.85c-.262-.075-.499-.184-.71-.337a.75.75 0 00-.83 1.247c.45.3.985.527 1.54.625v.541a.75.75 0 001.5 0v-.541c.555-.098 1.09-.325 1.54-.625a.75.75 0 00-.83-1.247c-.211.153-.448.262-.71.337v-1.85c.42-.087.808-.233 1.131-.464.36-.27.619-.654.619-1.12 0-.5-.259-.864-.619-1.12-.323-.231-.71-.377-1.131-.464V6.25z" clip-rule="evenodd"/></svg>
+                <div class="flex-1 min-w-0">
+                  <div class="text-[12px] truncate">Upgraded to Pro</div>
+                  <div class="text-[10px] mono text-muted">May 12 · $9 / month</div>
+                </div>
+              </li>
+              <li class="activity-row flex items-start gap-2.5 px-1 py-1.5 rounded">
+                <svg class="h-3 w-3 text-dim mt-0.5 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M10 1.5l6.5 3.75v3.5c0 4.5-3 8.5-6.5 9.75C6.5 17.25 3.5 13.25 3.5 8.75v-3.5L10 1.5z"/></svg>
+                <div class="flex-1 min-w-0">
+                  <div class="text-[12px] truncate text-dim">Started Free trial</div>
+                  <div class="text-[10px] mono text-muted">Apr 28</div>
+                </div>
+              </li>
+            </ul>
+          </section>
+
+          <!-- Last device -->
+          <section aria-labelledby="dev-act-h">
+            <h4 id="dev-act-h" class="display text-[11px] uppercase tracking-wider text-muted mb-2">Last device</h4>
+            <ul class="space-y-0.5 -mx-1">
+              <li class="activity-row flex items-start gap-2.5 px-1 py-1.5 rounded">
+                <svg class="h-3 w-3 text-cyan mt-0.5 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M9 2a1 1 0 00-1 1v1H6a2 2 0 00-2 2v1H3a1 1 0 00-1 1v6a1 1 0 001 1h1v1a2 2 0 002 2h2v-1a1 1 0 00-1-1H7v-2h2a1 1 0 001-1V9a1 1 0 00-1-1H7V6h2a1 1 0 001-1V4a1 1 0 00-1-1H9z"/></svg>
+                <div class="flex-1 min-w-0">
+                  <div class="text-[12px] truncate">esp32s3-left connected</div>
+                  <div class="text-[10px] mono text-muted">/dev/cu.usbserial-1410 · 4d ago</div>
+                </div>
+              </li>
+            </ul>
+          </section>
+
+          <!-- Downloads / data export card -->
+          <section class="bg-surface border border-default rounded-lg p-3" aria-labelledby="export-h">
+            <h4 id="export-h" class="display text-[12px] mb-1.5">Your data</h4>
+            <p class="text-[11px] text-dim mb-2.5">Download everything: projects, KB contributions, audit log.</p>
+            <button class="w-full text-[11px] py-1.5 bg-surface-2 border border-default rounded hover:border-cyan-soft text-dim hover:text-default cursor-pointer" aria-label="Request data export">Request export</button>
+          </section>
+
+          <!-- Help card -->
+          <section class="text-[11px] text-muted px-1">
+            <p>
+              Need help? <a href="04-docs-site.html" class="text-cyan hover:opacity-80">Read the docs</a> or <a href="05-kb-viewer.html" class="text-cyan hover:opacity-80">search the knowledge base</a>. Pro users get priority email support — <a href="#" class="text-cyan hover:opacity-80">ronie@tinkr.build</a>.
+            </p>
+          </section>
+        </div>
+      </aside>
+    </div>
+
+    <!-- =========== STATUS BAR =========== -->
+    <div class="h-7 bg-surface border-t border-default px-3 flex items-center text-[11px] mono text-dim gap-3" role="contentinfo" aria-label="Status bar">
+      <span class="flex items-center gap-1.5">
+        <span class="h-1.5 w-1.5 rounded-full bg-cyan"></span>
+        <span>settings · account</span>
+      </span>
+      <span class="text-muted">|</span>
+      <span>all changes saved</span>
+      <span class="text-muted">|</span>
+      <span>2 sessions · 1 device</span>
+      <span class="ml-auto"></span>
+      <span class="text-muted">⌘,</span>
+      <span class="text-muted">|</span>
+      <span>v0.7.3</span>
+    </div>
+
+  </div><!-- /IDE window -->
+
+  <!-- ================== DESIGN NOTES ================== -->
+  <section class="mt-8 grid md:grid-cols-2 gap-4 text-[12px] text-dim">
+    <div class="bg-surface border border-default rounded-lg p-4">
+      <h3 class="display text-[13px] text-default mb-2">What "calm" means here</h3>
+      <p>The amber accent is the most saturated color in the brand, and it is used twice on this page: on the plan card's tier badge, and on the "Tip" callouts in the rail. The "Upgrade" CTA stays cyan. Settings is not a sales page — it is a tool.</p>
+    </div>
+    <div class="bg-surface border border-default rounded-lg p-4">
+      <h3 class="display text-[13px] text-default mb-2">Why the danger zone is its own card</h3>
+      <p>A red 1-px border, an amber warning icon, and a single button. No red body copy. The card lives at the bottom of the page — it is the last thing the eye lands on. The confirmation modal (not shown) types the account name to confirm. The soft-delete grace period is shown in the copy.</p>
+    </div>
+    <div class="bg-surface border border-default rounded-lg p-4">
+      <h3 class="display text-[13px] text-default mb-2">The plan card's job</h3>
+      <p>Tell the user what they have and when it renews. The three small stat tiles (plugin projects, storage, CI minutes) are the "are you using it?" hook — if any of them is empty, the user is overpaying. The "Cancel plan" link is in red, low-saturation, last in the row.</p>
+    </div>
+    <div class="bg-surface border border-default rounded-lg p-4">
+      <h3 class="display text-[13px] text-default mb-2">The activity rail</h3>
+      <p>Forensic, not social. The last blocked login (Singapore, 14 days ago) is shown in red so the user knows they were protected. The "this device" marker on the top row is the only positive social signal — it tells the user they are where they expect to be.</p>
+    </div>
+  </section>
+
+  <footer class="text-[11px] mono text-muted text-center pt-4 pb-8">
+    <a href="02-tauri-shell.html" class="hover:text-default">02 tauri shell</a> ·
+    <a href="03-marketplace.html" class="hover:text-default">03 marketplace</a> ·
+    <a href="04-docs-site.html" class="hover:text-default">04 docs</a> ·
+    <a href="05-kb-viewer.html" class="hover:text-default">05 kb viewer</a> ·
+    <a href="10-project-explorer.html" class="hover:text-default">10 project explorer</a> ·
+    <span class="text-cyan">11 settings</span>
+  </footer>
+</div>
+
+<!--
+  LIGHT MODE NOTE
+  ----------------------------------------------------------------------
+  Toggle dark <-> light by removing/adding the `dark` class on <html>.
+  The light token block at the top of <style> covers all semantic
+  colors. In light mode:
+    - Surfaces go from slate-900 to white / slate-50 / slate-100
+    - Cyan becomes teal-700 (passes 4.5:1 on white)
+    - Amber becomes orange-700
+    - Violet becomes violet-700
+    - The "Verified" badge stays teal-700, readable on white
+    - The danger zone border stays red-500
+  Every card, badge, and rail uses tokens — so the entire page
+  retones with one class change. The mac-chrome gradient inverts
+  to a slate-200 → slate-300 gradient to match the IDE shell.
+-->
+</body>
+</html>

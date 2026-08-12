@@ -38,19 +38,19 @@
 | **Python Requirement** | `>=3.11` (supports 3.11–3.15) |
 | **Build Backend** | `uv_build >=0.11.6, <0.12.0` |
 | **Entry Point** | `thonny = "thonny:launch"` (gui-scripts) |
-| **Source** | [thonny-master/](file:///Users/mindflow/Projects/Blink/thonny-master/) |
+| **Source** | [thonny-master/](file:///Users/mindflow/Projects/Tinkr/thonny-master/) |
 
 ### Key Source Files
 
 | File | Size | Purpose |
 |---|---|---|
-| [workbench.py](file:///Users/mindflow/Projects/Blink/thonny-master/thonny/workbench.py) | 124KB | IDE heart — UI, plugins, events, layout |
-| [shell.py](file:///Users/mindflow/Projects/Blink/thonny-master/thonny/shell.py) | 88KB | REPL / Shell console |
-| [running.py](file:///Users/mindflow/Projects/Blink/thonny-master/thonny/running.py) | 70KB | Execution engine, Runner, BackendProxy |
-| [base_file_browser.py](file:///Users/mindflow/Projects/Blink/thonny-master/thonny/base_file_browser.py) | 66KB | File browser (local + remote) |
-| [editors.py](file:///Users/mindflow/Projects/Blink/thonny-master/thonny/editors.py) | 55KB | Editor tabs, save states, LSP sync |
-| [backend.py](file:///Users/mindflow/Projects/Blink/thonny-master/thonny/backend.py) | 30KB | Backend process abstraction |
-| [common.py](file:///Users/mindflow/Projects/Blink/thonny-master/thonny/common.py) | 27KB | Shared types: Commands, Responses, Records |
+| [workbench.py](file:///Users/mindflow/Projects/Tinkr/thonny-master/thonny/workbench.py) | 124KB | IDE heart — UI, plugins, events, layout |
+| [shell.py](file:///Users/mindflow/Projects/Tinkr/thonny-master/thonny/shell.py) | 88KB | REPL / Shell console |
+| [running.py](file:///Users/mindflow/Projects/Tinkr/thonny-master/thonny/running.py) | 70KB | Execution engine, Runner, BackendProxy |
+| [base_file_browser.py](file:///Users/mindflow/Projects/Tinkr/thonny-master/thonny/base_file_browser.py) | 66KB | File browser (local + remote) |
+| [editors.py](file:///Users/mindflow/Projects/Tinkr/thonny-master/thonny/editors.py) | 55KB | Editor tabs, save states, LSP sync |
+| [backend.py](file:///Users/mindflow/Projects/Tinkr/thonny-master/thonny/backend.py) | 30KB | Backend process abstraction |
+| [common.py](file:///Users/mindflow/Projects/Tinkr/thonny-master/thonny/common.py) | 27KB | Shared types: Commands, Responses, Records |
 
 ---
 
@@ -88,15 +88,15 @@ graph LR
 
 | Class | File | Role |
 |---|---|---|
-| **`Workbench`** | [workbench.py](file:///Users/mindflow/Projects/Blink/thonny-master/thonny/workbench.py) | Central hub. Inherits `tk.Tk`. Manages plugins, config, themes, UI layout, global event loop |
-| **`Runner`** | [running.py](file:///Users/mindflow/Projects/Blink/thonny-master/thonny/running.py) | Execution orchestrator. Maintains state, queues commands, owns the BackendProxy |
-| **`BackendProxy`** | [running.py](file:///Users/mindflow/Projects/Blink/thonny-master/thonny/running.py) | Frontend-side abstraction of backend channel (subprocess, serial, SSH) |
-| **`SubprocessProxy`** | [running.py](file:///Users/mindflow/Projects/Blink/thonny-master/thonny/running.py) | Concrete proxy for local CPython subprocess backends |
-| **`BareMetalMicroPythonProxy`** | [mp_front.py](file:///Users/mindflow/Projects/Blink/thonny-master/thonny/plugins/micropython/mp_front.py) | Frontend proxy for serial-connected MicroPython devices |
-| **`MicroPythonBackend`** | [mp_back.py](file:///Users/mindflow/Projects/Blink/thonny-master/thonny/plugins/micropython/mp_back.py) | Backend-side REPL handler, code execution, object inspection |
-| **`BareMetalMicroPythonBackend`** | [bare_metal_backend.py](file:///Users/mindflow/Projects/Blink/thonny-master/thonny/plugins/micropython/bare_metal_backend.py) | Serial/WebREPL connection manager, raw paste mode, soft reboots |
-| **`BaseBackend` / `MainBackend`** | [backend.py](file:///Users/mindflow/Projects/Blink/thonny-master/thonny/backend.py) | Backend read-loop, command consumption, stdout/stderr routing |
-| **`ShellView`** | [shell.py](file:///Users/mindflow/Projects/Blink/thonny-master/thonny/shell.py) | Interactive console, magic commands, IO display |
+| **`Workbench`** | [workbench.py](file:///Users/mindflow/Projects/Tinkr/thonny-master/thonny/workbench.py) | Central hub. Inherits `tk.Tk`. Manages plugins, config, themes, UI layout, global event loop |
+| **`Runner`** | [running.py](file:///Users/mindflow/Projects/Tinkr/thonny-master/thonny/running.py) | Execution orchestrator. Maintains state, queues commands, owns the BackendProxy |
+| **`BackendProxy`** | [running.py](file:///Users/mindflow/Projects/Tinkr/thonny-master/thonny/running.py) | Frontend-side abstraction of backend channel (subprocess, serial, SSH) |
+| **`SubprocessProxy`** | [running.py](file:///Users/mindflow/Projects/Tinkr/thonny-master/thonny/running.py) | Concrete proxy for local CPython subprocess backends |
+| **`BareMetalMicroPythonProxy`** | [mp_front.py](file:///Users/mindflow/Projects/Tinkr/thonny-master/thonny/plugins/micropython/mp_front.py) | Frontend proxy for serial-connected MicroPython devices |
+| **`MicroPythonBackend`** | [mp_back.py](file:///Users/mindflow/Projects/Tinkr/thonny-master/thonny/plugins/micropython/mp_back.py) | Backend-side REPL handler, code execution, object inspection |
+| **`BareMetalMicroPythonBackend`** | [bare_metal_backend.py](file:///Users/mindflow/Projects/Tinkr/thonny-master/thonny/plugins/micropython/bare_metal_backend.py) | Serial/WebREPL connection manager, raw paste mode, soft reboots |
+| **`BaseBackend` / `MainBackend`** | [backend.py](file:///Users/mindflow/Projects/Tinkr/thonny-master/thonny/backend.py) | Backend read-loop, command consumption, stdout/stderr routing |
+| **`ShellView`** | [shell.py](file:///Users/mindflow/Projects/Tinkr/thonny-master/thonny/shell.py) | Interactive console, magic commands, IO display |
 
 ### Boot Sequence
 
@@ -132,11 +132,11 @@ thonny/main.py → parse args → single-instance check
 
 | Directory | Purpose | Key Files |
 |---|---|---|
-| [esp/](file:///Users/mindflow/Projects/Blink/thonny-master/thonny/plugins/esp/) | ESP32/ESP8266 support | `__init__.py` (proxies, config), `esp32_back.py`, `esp8266_back.py` |
-| [micropython/](file:///Users/mindflow/Projects/Blink/thonny-master/thonny/plugins/micropython/) | Generic MicroPython backend | `mp_front.py`, `mp_back.py`, `bare_metal_backend.py`, `esptool_dialog.py` |
-| [circuitpython/](file:///Users/mindflow/Projects/Blink/thonny-master/thonny/plugins/circuitpython/) | CircuitPython support | `__init__.py` (VID/PID overrides, UF2 flashing) |
-| [rp2040/](file:///Users/mindflow/Projects/Blink/thonny-master/thonny/plugins/rp2040/) | RP2040 chip support | `__init__.py` |
-| [rpi_pico/](file:///Users/mindflow/Projects/Blink/thonny-master/thonny/plugins/rpi_pico/) | Raspberry Pi Pico | `__init__.py` (VID `0x2E8A`, PID `0x0005`) |
+| [esp/](file:///Users/mindflow/Projects/Tinkr/thonny-master/thonny/plugins/esp/) | ESP32/ESP8266 support | `__init__.py` (proxies, config), `esp32_back.py`, `esp8266_back.py` |
+| [micropython/](file:///Users/mindflow/Projects/Tinkr/thonny-master/thonny/plugins/micropython/) | Generic MicroPython backend | `mp_front.py`, `mp_back.py`, `bare_metal_backend.py`, `esptool_dialog.py` |
+| [circuitpython/](file:///Users/mindflow/Projects/Tinkr/thonny-master/thonny/plugins/circuitpython/) | CircuitPython support | `__init__.py` (VID/PID overrides, UF2 flashing) |
+| [rp2040/](file:///Users/mindflow/Projects/Tinkr/thonny-master/thonny/plugins/rp2040/) | RP2040 chip support | `__init__.py` |
+| [rpi_pico/](file:///Users/mindflow/Projects/Tinkr/thonny-master/thonny/plugins/rpi_pico/) | Raspberry Pi Pico | `__init__.py` (VID `0x2E8A`, PID `0x0005`) |
 
 ---
 
@@ -163,11 +163,11 @@ Detection is implemented in `BareMetalMicroPythonProxy._is_potential_port(p)`:
 
 | Device Family | Vendor ID (VID) | Product ID (PID) | Chip | Source File |
 |---|---|---|---|---|
-| **Espressif Native USB** | `0x303A` | various | ESP32-S2/S3/C3 | [esp/__init__.py](file:///Users/mindflow/Projects/Blink/thonny-master/thonny/plugins/esp/__init__.py) |
+| **Espressif Native USB** | `0x303A` | various | ESP32-S2/S3/C3 | [esp/__init__.py](file:///Users/mindflow/Projects/Tinkr/thonny-master/thonny/plugins/esp/__init__.py) |
 | **Silicon Labs CP210x** | `0x10C4` | `0xEA60` | CP2102/CP2104 | pyserial defaults |
 | **WCH CH340** | `0x1A86` | `0x7523` | CH340G/CH341 | pyserial defaults |
 | **FTDI** | `0x0403` | various | FT232R/FT2232 | pyserial defaults |
-| **Raspberry Pi Pico** | `0x2E8A` | `0x0005` | RP2040 | [rpi_pico/__init__.py](file:///Users/mindflow/Projects/Blink/thonny-master/thonny/plugins/rpi_pico/__init__.py) |
+| **Raspberry Pi Pico** | `0x2E8A` | `0x0005` | RP2040 | [rpi_pico/__init__.py](file:///Users/mindflow/Projects/Tinkr/thonny-master/thonny/plugins/rpi_pico/__init__.py) |
 
 ### Text-Based Matching (ESP32)
 
@@ -187,7 +187,7 @@ On macOS, ESP32 devices appear as:
 
 ### USB Disk Detection (UF2 Boards)
 
-For boards using UF2 flashing (RP2040, CircuitPython), [udisks.py](file:///Users/mindflow/Projects/Blink/thonny-master/thonny/udisks.py) uses Linux DBus/UDisks2 to detect mounted USB mass storage volumes. On macOS, `adafruit_board_toolkit` is used instead.
+For boards using UF2 flashing (RP2040, CircuitPython), [udisks.py](file:///Users/mindflow/Projects/Tinkr/thonny-master/thonny/udisks.py) uses Linux DBus/UDisks2 to detect mounted USB mass storage volumes. On macOS, `adafruit_board_toolkit` is used instead.
 
 ---
 
@@ -195,7 +195,7 @@ For boards using UF2 flashing (RP2040, CircuitPython), [udisks.py](file:///Users
 
 ### ESP32 — esptool Integration
 
-Implemented in [esptool_dialog.py](file:///Users/mindflow/Projects/Blink/thonny-master/thonny/plugins/micropython/esptool_dialog.py):
+Implemented in [esptool_dialog.py](file:///Users/mindflow/Projects/Tinkr/thonny-master/thonny/plugins/micropython/esptool_dialog.py):
 
 | Parameter | Options | Default |
 |---|---|---|
@@ -245,17 +245,17 @@ Thonny maintains JSON databases for firmware variant discovery:
 
 | File | Purpose |
 |---|---|
-| [micropython-variants-esptool.json](file:///Users/mindflow/Projects/Blink/thonny-master/data/micropython-variants-esptool.json) | MicroPython ESP variants |
-| [micropython-variants-uf2.json](file:///Users/mindflow/Projects/Blink/thonny-master/data/micropython-variants-uf2.json) | MicroPython UF2 variants |
-| [circuitpython-variants-esptool.json](file:///Users/mindflow/Projects/Blink/thonny-master/data/circuitpython-variants-esptool.json) | CircuitPython ESP variants |
-| [circuitpython-variants-uf2.json](file:///Users/mindflow/Projects/Blink/thonny-master/data/circuitpython-variants-uf2.json) | CircuitPython UF2 variants |
-| [circuitpython-variants-daplink.json](file:///Users/mindflow/Projects/Blink/thonny-master/data/circuitpython-variants-daplink.json) | CircuitPython DAPLink variants |
+| [micropython-variants-esptool.json](file:///Users/mindflow/Projects/Tinkr/thonny-master/data/micropython-variants-esptool.json) | MicroPython ESP variants |
+| [micropython-variants-uf2.json](file:///Users/mindflow/Projects/Tinkr/thonny-master/data/micropython-variants-uf2.json) | MicroPython UF2 variants |
+| [circuitpython-variants-esptool.json](file:///Users/mindflow/Projects/Tinkr/thonny-master/data/circuitpython-variants-esptool.json) | CircuitPython ESP variants |
+| [circuitpython-variants-uf2.json](file:///Users/mindflow/Projects/Tinkr/thonny-master/data/circuitpython-variants-uf2.json) | CircuitPython UF2 variants |
+| [circuitpython-variants-daplink.json](file:///Users/mindflow/Projects/Tinkr/thonny-master/data/circuitpython-variants-daplink.json) | CircuitPython DAPLink variants |
 
 ---
 
 ## 6. Backend Communication Protocol
 
-### Message Types (defined in [common.py](file:///Users/mindflow/Projects/Blink/thonny-master/thonny/common.py))
+### Message Types (defined in [common.py](file:///Users/mindflow/Projects/Tinkr/thonny-master/thonny/common.py))
 
 ```mermaid
 graph TD
@@ -348,7 +348,7 @@ On connection, Thonny injects `EXTRA_HELPER_CODE` into the REPL, defining a `__m
 
 ## 9. Editor & Code Intelligence
 
-### Editor System ([editors.py](file:///Users/mindflow/Projects/Blink/thonny-master/thonny/editors.py))
+### Editor System ([editors.py](file:///Users/mindflow/Projects/Tinkr/thonny-master/thonny/editors.py))
 
 | Feature | Implementation |
 |---|---|
@@ -358,7 +358,7 @@ On connection, Thonny injects `EXTRA_HELPER_CODE` into the REPL, defining a `__m
 | **Save** | Local: `write_local_file()`. Remote: `InlineCommand("write_file")` |
 | **External Changes** | `check_for_external_changes()` compares mtime, prompts reload |
 
-### LSP Integration ([lsp_proxy.py](file:///Users/mindflow/Projects/Blink/thonny-master/thonny/lsp_proxy.py))
+### LSP Integration ([lsp_proxy.py](file:///Users/mindflow/Projects/Tinkr/thonny-master/thonny/lsp_proxy.py))
 
 | Capability | Protocol |
 |---|---|
@@ -375,7 +375,7 @@ On connection, Thonny injects `EXTRA_HELPER_CODE` into the REPL, defining a `__m
 
 ## 10. Package Management
 
-### pip GUI ([pip_gui.py](file:///Users/mindflow/Projects/Blink/thonny-master/thonny/plugins/pip_gui.py))
+### pip GUI ([pip_gui.py](file:///Users/mindflow/Projects/Tinkr/thonny-master/thonny/plugins/pip_gui.py))
 
 | Feature | Implementation |
 |---|---|
@@ -384,7 +384,7 @@ On connection, Thonny injects `EXTRA_HELPER_CODE` into the REPL, defining a `__m
 | **Device Install** | `InlineCommand` to backend → `upip` / `mip` on MicroPython |
 | **Read-Only Check** | Queries if environment is read-only before allowing install |
 | **Package Info** | Fetches distribution metadata, summaries, available versions |
-| **PyPI Summaries** | Cached in [pypi_summaries_cpython.json](file:///Users/mindflow/Projects/Blink/thonny-master/data/pypi_summaries_cpython.json) and [pypi_summaries_microcircuit.json](file:///Users/mindflow/Projects/Blink/thonny-master/data/pypi_summaries_microcircuit.json) |
+| **PyPI Summaries** | Cached in [pypi_summaries_cpython.json](file:///Users/mindflow/Projects/Tinkr/thonny-master/data/pypi_summaries_cpython.json) and [pypi_summaries_microcircuit.json](file:///Users/mindflow/Projects/Tinkr/thonny-master/data/pypi_summaries_microcircuit.json) |
 
 ---
 
@@ -393,7 +393,7 @@ On connection, Thonny injects `EXTRA_HELPER_CODE` into the REPL, defining a `__m
 > [!TIP]
 > Thonny already has local LLM support built in — this is a key feature we can extract and automate.
 
-### Chat System ([chat.py](file:///Users/mindflow/Projects/Blink/thonny-master/thonny/plugins/chat.py))
+### Chat System ([chat.py](file:///Users/mindflow/Projects/Tinkr/thonny-master/thonny/plugins/chat.py))
 
 | Feature | Implementation |
 |---|---|
@@ -402,7 +402,7 @@ On connection, Thonny injects `EXTRA_HELPER_CODE` into the REPL, defining a `__m
 | **Multi-Assistant** | `@assistant_name` routing to registered assistants |
 | **Streaming** | Incremental `AiChatResponseFragment` events back to UI thread |
 
-### Ollama Integration ([ollama.py](file:///Users/mindflow/Projects/Blink/thonny-master/thonny/plugins/ollama.py))
+### Ollama Integration ([ollama.py](file:///Users/mindflow/Projects/Tinkr/thonny-master/thonny/plugins/ollama.py))
 
 | Field | Value |
 |---|---|
@@ -411,7 +411,7 @@ On connection, Thonny injects `EXTRA_HELPER_CODE` into the REPL, defining a `__m
 | **Server** | Local Ollama instance |
 | **Use Case** | On-device code assistance without internet |
 
-### OpenAI Integration ([openai.py](file:///Users/mindflow/Projects/Blink/thonny-master/thonny/plugins/openai.py))
+### OpenAI Integration ([openai.py](file:///Users/mindflow/Projects/Tinkr/thonny-master/thonny/plugins/openai.py))
 
 | Field | Value |
 |---|---|
@@ -429,7 +429,7 @@ On connection, Thonny injects `EXTRA_HELPER_CODE` into the REPL, defining a `__m
 | Layer | File | Priority |
 |---|---|---|
 | **User Settings** | `~/.thonny/configuration.ini` | Highest |
-| **Package Defaults** | [defaults.ini](file:///Users/mindflow/Projects/Blink/thonny-master/thonny/defaults.ini) | Medium |
+| **Package Defaults** | [defaults.ini](file:///Users/mindflow/Projects/Tinkr/thonny-master/thonny/defaults.ini) | Medium |
 | **Source Defaults** | `Workbench.set_default()` calls | Lowest |
 
 ### Key ESP32 Configuration Options
@@ -612,10 +612,10 @@ Thonny maintains automated scripts to keep firmware databases current:
 
 | Script | Purpose |
 |---|---|
-| [update_micropython_variants.py](file:///Users/mindflow/Projects/Blink/thonny-master/data/update_micropython_variants.py) | Scrape MicroPython download page for latest variants |
-| [update_circuitpython_variants.py](file:///Users/mindflow/Projects/Blink/thonny-master/data/update_circuitpython_variants.py) | Scrape CircuitPython releases for variants |
-| [update_firmware_mapping.py](file:///Users/mindflow/Projects/Blink/thonny-master/data/update_firmware_mapping.py) | Map firmware files to board identifiers |
-| [update_pypi_summaries.py](file:///Users/mindflow/Projects/Blink/thonny-master/data/update_pypi_summaries.py) | Cache PyPI package summaries |
+| [update_micropython_variants.py](file:///Users/mindflow/Projects/Tinkr/thonny-master/data/update_micropython_variants.py) | Scrape MicroPython download page for latest variants |
+| [update_circuitpython_variants.py](file:///Users/mindflow/Projects/Tinkr/thonny-master/data/update_circuitpython_variants.py) | Scrape CircuitPython releases for variants |
+| [update_firmware_mapping.py](file:///Users/mindflow/Projects/Tinkr/thonny-master/data/update_firmware_mapping.py) | Map firmware files to board identifiers |
+| [update_pypi_summaries.py](file:///Users/mindflow/Projects/Tinkr/thonny-master/data/update_pypi_summaries.py) | Cache PyPI package summaries |
 
 ---
 

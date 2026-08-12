@@ -1,0 +1,748 @@
+<!doctype html>
+<!--
+  Tinkr Mockup 03 — Plugin Marketplace (v1.5)
+  ======================================================================
+  Design notes:
+
+  1. COMMUNITY FIRST. The hero is "Hardware plugins, made by the
+     community." Not "Buy a plugin." The marketplace is where plugins
+     GET DISCOVERED, not where the company extracts rent. The free
+     4 plugin projects (ESP32, RP2040, nRF52, MicroPython runtime) are
+     prominent — they are the foundation.
+
+  2. 4 FREE, PAID IS A CHOICE. Per locked decision: "4 free plugin
+     projects per user + 4 free sim projects per user." Anything beyond
+     is opt-in paid. Pricing is in two bundles (Maker / Pro) plus
+     per-plugin, never as a gate.
+
+  3. "STAYS TRUE TO CONTRIBUTIONS" IS A CONTRACT, NOT A FOOTER. The
+     3-clause contract is a full section on its own. Users must see
+     it before they consider building.
+
+  4. LIGHT + DARK. Both feel native. Dark uses the same cyan-led
+     primary; light is warmer with cyan-700 as the brand.
+
+  5. THE PLUGIN CARD. Avatar (initials + color), name, vendor,
+     one-line description, capability chips, install count, "install"
+     primary button. Lays out cleanly in a 3-col grid that collapses
+     to 1-col on tablet.
+  ======================================================================
+-->
+<html lang="en" class="dark">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Tinkr Marketplace — Hardware plugins, made by the community</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0B1120;
+    --surface: #0F172A;
+    --surface-2: #111827;
+    --border: #1F2937;
+    --text: #E2E8F0;
+    --text-dim: #94A3B8;
+    --text-muted: #64748B;
+    --cyan: #5EEAD4;
+    --cyan-deep: #06B6D4;
+    --amber: #F59E0B;
+    --green: #10B981;
+    --red: #EF4444;
+    --blue: #60A5FA;
+    --magenta: #C084FC;
+  }
+  html.light {
+    --bg: #FAFAFA;
+    --surface: #FFFFFF;
+    --surface-2: #F1F5F9;
+    --border: #E2E8F0;
+    --text: #0F172A;
+    --text-dim: #475569;
+    --text-muted: #94A3B8;
+  }
+  html, body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', system-ui, sans-serif;
+  }
+  .mono { font-family: 'JetBrains Mono', ui-monospace, monospace; }
+  .display { font-family: 'Space Grotesk', system-ui, sans-serif; }
+  .bg-bg { background-color: var(--bg); }
+  .bg-surface { background-color: var(--surface); }
+  .bg-surface-2 { background-color: var(--surface-2); }
+  .border-default { border-color: var(--border); }
+  .text-default { color: var(--text); }
+  .text-dim { color: var(--text-dim); }
+  .text-muted { color: var(--text-muted); }
+  .text-cyan { color: var(--cyan); }
+  .text-green { color: var(--green); }
+  .text-amber { color: var(--amber); }
+  .text-red { color: var(--red); }
+  .text-blue { color: var(--blue); }
+  .text-magenta { color: var(--magenta); }
+  /* Hero aurora */
+  .hero-bg {
+    background:
+      radial-gradient(ellipse 800px 400px at 20% 0%, rgba(34, 211, 238, 0.15), transparent 60%),
+      radial-gradient(ellipse 600px 300px at 80% 50%, rgba(192, 132, 252, 0.10), transparent 60%),
+      radial-gradient(ellipse 700px 350px at 50% 100%, rgba(245, 158, 11, 0.05), transparent 60%),
+      var(--bg);
+  }
+  html.light .hero-bg {
+    background:
+      radial-gradient(ellipse 800px 400px at 20% 0%, rgba(8, 145, 178, 0.10), transparent 60%),
+      radial-gradient(ellipse 600px 300px at 80% 50%, rgba(124, 58, 237, 0.06), transparent 60%),
+      var(--bg);
+  }
+  .scrollbar::-webkit-scrollbar { width: 8px; height: 8px; }
+  .scrollbar::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+  .scrollbar::-webkit-scrollbar-track { background: transparent; }
+</style>
+</head>
+<body class="min-h-screen">
+
+<!-- Top nav -->
+<header class="border-b border-default bg-bg/80 backdrop-blur sticky top-0 z-30">
+  <div class="max-w-7xl mx-auto px-6 h-14 flex items-center gap-6">
+    <a href="#" class="flex items-center gap-2">
+      <span class="relative inline-flex h-6 w-6 items-center justify-center">
+        <span class="absolute inset-0 rounded-md bg-cyan-500/20"></span>
+        <span class="relative h-2.5 w-2.5 rounded-sm bg-cyan-400"></span>
+      </span>
+      <span class="display font-semibold tracking-tight">tinkr</span>
+    </a>
+    <nav class="hidden md:flex items-center gap-1 text-sm">
+      <a class="px-3 py-1.5 rounded-md text-default font-medium bg-surface-2" href="#" aria-current="page">marketplace</a>
+      <a class="px-3 py-1.5 rounded-md text-dim hover:text-default hover:bg-surface-2" href="04-docs-site.html">docs</a>
+      <a class="px-3 py-1.5 rounded-md text-dim hover:text-default hover:bg-surface-2" href="05-kb-viewer.html">knowledge base</a>
+      <a class="px-3 py-1.5 rounded-md text-dim hover:text-default hover:bg-surface-2" href="#creators">creators</a>
+      <a class="px-3 py-1.5 rounded-md text-dim hover:text-default hover:bg-surface-2" href="#">GitHub ↗</a>
+    </nav>
+    <div class="flex-1"></div>
+    <div class="hidden md:block">
+      <div class="relative">
+        <input class="w-72 bg-surface-2 border border-default rounded-md text-sm pl-8 pr-3 py-1.5 placeholder:text-muted focus:outline-none focus:border-cyan/60" placeholder="Search 184 plugins…">
+        <span class="absolute left-2.5 top-2 text-muted text-sm">⌕</span>
+        <span class="absolute right-2 top-1.5 text-[10px] mono text-muted border border-default rounded px-1 py-0.5">⌘K</span>
+      </div>
+    </div>
+    <button onclick="document.documentElement.classList.toggle('light')" class="text-xs mono px-2.5 py-1.5 rounded-md border border-default hover:border-cyan/40 cursor-pointer" aria-label="Toggle theme">
+      <span class="dark:hidden">☀ light</span>
+      <span class="hidden dark:inline">◐ dark</span>
+    </button>
+    <a href="#" class="text-sm bg-cyan text-bg px-3 py-1.5 rounded-md font-medium hover:bg-cyan-300 cursor-pointer">sign in</a>
+  </div>
+</header>
+
+<!-- ================== HERO ================== -->
+<section class="hero-bg border-b border-default">
+  <div class="max-w-7xl mx-auto px-6 py-20 md:py-28 grid md:grid-cols-2 gap-10 items-center">
+    <div>
+      <div class="text-xs mono uppercase tracking-widest text-cyan">marketplace · v1.5</div>
+      <h1 class="display text-4xl md:text-5xl lg:text-6xl font-semibold mt-3 tracking-tight leading-[1.05]">
+        Hardware plugins,<br><span class="text-cyan">made by the community.</span>
+      </h1>
+      <p class="text-dim mt-5 text-lg max-w-xl">
+        Every Tinkr plugin is human-built, MIT-or-better licensed, and lives in a public git registry. Four free plugin projects ship with every install — paid plugins are a choice, not a gate.
+      </p>
+      <div class="mt-7 flex flex-wrap items-center gap-3">
+        <a href="#featured" class="inline-flex items-center gap-2 bg-cyan text-bg px-4 py-2.5 rounded-md font-medium hover:bg-cyan-300 cursor-pointer">
+          Browse plugins →
+        </a>
+        <a href="#creators" class="inline-flex items-center gap-2 border border-default px-4 py-2.5 rounded-md font-medium hover:border-cyan/40 cursor-pointer">
+          Become a creator
+        </a>
+      </div>
+      <div class="mt-8 flex items-center gap-6 text-sm text-dim">
+        <div><span class="display text-default text-xl font-semibold">184</span> plugins</div>
+        <div class="h-4 w-px bg-default/10"></div>
+        <div><span class="display text-default text-xl font-semibold">42</span> creators</div>
+        <div class="h-4 w-px bg-default/10"></div>
+        <div><span class="display text-default text-xl font-semibold">38k</span> installs</div>
+        <div class="h-4 w-px bg-default/10"></div>
+        <div><span class="display text-default text-xl font-semibold">100%</span> MIT-or-better</div>
+      </div>
+    </div>
+    <!-- Hero right: a stylized plugin card stack -->
+    <div class="relative h-[420px] hidden md:block">
+      <div class="absolute right-0 top-0 w-[340px] bg-surface border border-default rounded-xl p-4 shadow-2xl" style="transform: rotate(2deg)">
+        <div class="flex items-center gap-3">
+          <div class="h-10 w-10 rounded-md bg-cyan/15 border border-cyan/30 flex items-center justify-center text-cyan font-semibold">e32</div>
+          <div>
+            <div class="font-semibold">tinkr-esp32</div>
+            <div class="text-xs mono text-dim">espressif · 12 tools · stable</div>
+          </div>
+          <span class="ml-auto text-xs mono text-green">★ 342</span>
+        </div>
+        <div class="mt-3 text-sm text-dim">ESP32 family support via esptool &amp; minny. The reference plugin.</div>
+        <div class="mt-3 flex items-center gap-1.5 text-[10px] mono">
+          <span class="px-1.5 py-0.5 bg-surface-2 border border-default rounded">flash</span>
+          <span class="px-1.5 py-0.5 bg-surface-2 border border-default rounded">repl</span>
+          <span class="px-1.5 py-0.5 bg-surface-2 border border-default rounded">fs</span>
+          <span class="px-1.5 py-0.5 bg-surface-2 border border-default rounded">pkg</span>
+        </div>
+      </div>
+      <div class="absolute right-12 top-24 w-[340px] bg-surface border border-default rounded-xl p-4 shadow-2xl" style="transform: rotate(-3deg)">
+        <div class="flex items-center gap-3">
+          <div class="h-10 w-10 rounded-md bg-magenta/15 border border-magenta/30 flex items-center justify-center text-magenta font-semibold">rp</div>
+          <div>
+            <div class="font-semibold">tinkr-rp2040</div>
+            <div class="text-xs mono text-dim">raspberry pi · 8 tools · stable</div>
+          </div>
+          <span class="ml-auto text-xs mono text-green">★ 218</span>
+        </div>
+        <div class="mt-3 text-sm text-dim">Raspberry Pi Pico &amp; Pico W. Picotool + minny.</div>
+      </div>
+      <div class="absolute right-24 top-48 w-[340px] bg-surface border border-default rounded-xl p-4 shadow-2xl" style="transform: rotate(1deg)">
+        <div class="flex items-center gap-3">
+          <div class="h-10 w-10 rounded-md bg-amber/15 border border-amber/30 flex items-center justify-center text-amber font-semibold">sn</div>
+          <div>
+            <div class="font-semibold">tinkr-sniffer</div>
+            <div class="text-xs mono text-dim">user-contrib · 1 tool · beta</div>
+          </div>
+          <span class="ml-auto text-xs mono text-amber">★ 42</span>
+        </div>
+        <div class="mt-3 text-sm text-dim">USB-UART sniffer. Watch what a board is saying without the IDE.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================== FEATURED ================== -->
+<section id="featured" class="max-w-7xl mx-auto px-6 py-16">
+  <div class="flex items-end justify-between">
+    <div>
+      <div class="text-xs mono uppercase tracking-widest text-cyan">featured</div>
+      <h2 class="display text-3xl font-semibold mt-2">The foundation plugins.</h2>
+      <p class="text-dim mt-2 max-w-2xl">Four free plugin projects ship with every install. They are MIT-licensed, vendor-maintained, and bundled with Tinkr. Everything else is opt-in.</p>
+    </div>
+    <a href="#grid" class="text-sm text-cyan hover:underline">all 184 →</a>
+  </div>
+  <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-4 mt-8">
+    <!-- card template -->
+    <article class="bg-surface border border-default rounded-lg p-4 hover:border-cyan/40 cursor-pointer">
+      <div class="flex items-center gap-3">
+        <div class="h-10 w-10 rounded-md bg-cyan/15 border border-cyan/30 flex items-center justify-center text-cyan font-semibold mono">e32</div>
+        <div class="min-w-0">
+          <div class="font-semibold">tinkr-esp32</div>
+          <div class="text-xs mono text-dim">1.2.3 · stable</div>
+        </div>
+        <span class="ml-auto text-[10px] mono px-1.5 py-0.5 rounded bg-green/15 text-green border border-green/30">free</span>
+      </div>
+      <p class="text-sm text-dim mt-3">ESP32, S2, S3, C3, C6, C2 — full flash + REPL + filesystem + package manager.</p>
+      <div class="flex items-center gap-1.5 text-[10px] mono mt-3 flex-wrap">
+        <span class="px-1.5 py-0.5 bg-surface-2 border border-default rounded">flash</span>
+        <span class="px-1.5 py-0.5 bg-surface-2 border border-default rounded">repl</span>
+        <span class="px-1.5 py-0.5 bg-surface-2 border border-default rounded">filesystem</span>
+        <span class="px-1.5 py-0.5 bg-surface-2 border border-default rounded">pkg-mgr</span>
+        <span class="px-1.5 py-0.5 bg-surface-2 border border-default rounded">plotter</span>
+      </div>
+      <div class="mt-4 pt-3 border-t border-default flex items-center justify-between text-xs">
+        <span class="text-dim">★ 342 · 12,450 installs</span>
+        <button class="text-cyan hover:underline cursor-pointer">install →</button>
+      </div>
+    </article>
+    <article class="bg-surface border border-default rounded-lg p-4 hover:border-cyan/40 cursor-pointer">
+      <div class="flex items-center gap-3">
+        <div class="h-10 w-10 rounded-md bg-magenta/15 border border-magenta/30 flex items-center justify-center text-magenta font-semibold mono">rp</div>
+        <div class="min-w-0">
+          <div class="font-semibold">tinkr-rp2040</div>
+          <div class="text-xs mono text-dim">0.8.0 · stable</div>
+        </div>
+        <span class="ml-auto text-[10px] mono px-1.5 py-0.5 rounded bg-green/15 text-green border border-green/30">free</span>
+      </div>
+      <p class="text-sm text-dim mt-3">Raspberry Pi Pico &amp; Pico W. Picotool + minny. USB drag-and-drop flash.</p>
+      <div class="flex items-center gap-1.5 text-[10px] mono mt-3 flex-wrap">
+        <span class="px-1.5 py-0.5 bg-surface-2 border border-default rounded">flash</span>
+        <span class="px-1.5 py-0.5 bg-surface-2 border border-default rounded">repl</span>
+        <span class="px-1.5 py-0.5 bg-surface-2 border border-default rounded">filesystem</span>
+        <span class="px-1.5 py-0.5 bg-surface-2 border border-default rounded">wifi</span>
+      </div>
+      <div class="mt-4 pt-3 border-t border-default flex items-center justify-between text-xs">
+        <span class="text-dim">★ 218 · 4,820 installs</span>
+        <button class="text-cyan hover:underline cursor-pointer">install →</button>
+      </div>
+    </article>
+    <article class="bg-surface border border-default rounded-lg p-4 hover:border-cyan/40 cursor-pointer">
+      <div class="flex items-center gap-3">
+        <div class="h-10 w-10 rounded-md bg-blue/15 border border-blue/30 flex items-center justify-center text-blue font-semibold mono">n52</div>
+        <div class="min-w-0">
+          <div class="font-semibold">tinkr-nrf52</div>
+          <div class="text-xs mono text-dim">0.5.1 · beta</div>
+        </div>
+        <span class="ml-auto text-[10px] mono px-1.5 py-0.5 rounded bg-green/15 text-green border border-green/30">free</span>
+      </div>
+      <p class="text-sm text-dim mt-3">XIAO nRF52840, Adafruit Feather nRF52. nrfjprog + UF2 bootloader.</p>
+      <div class="flex items-center gap-1.5 text-[10px] mono mt-3 flex-wrap">
+        <span class="px-1.5 py-0.5 bg-surface-2 border border-default rounded">flash</span>
+        <span class="px-1.5 py-0.5 bg-surface-2 border border-default rounded">repl</span>
+        <span class="px-1.5 py-0.5 bg-surface-2 border border-default rounded">ble-scan</span>
+        <span class="px-1.5 py-0.5 bg-surface-2 border border-default rounded">softdevice</span>
+      </div>
+      <div class="mt-4 pt-3 border-t border-default flex items-center justify-between text-xs">
+        <span class="text-dim">★ 87 · 1,210 installs</span>
+        <button class="text-cyan hover:underline cursor-pointer">install →</button>
+      </div>
+    </article>
+    <article class="bg-surface border border-default rounded-lg p-4 hover:border-cyan/40 cursor-pointer">
+      <div class="flex items-center gap-3">
+        <div class="h-10 w-10 rounded-md bg-amber/15 border border-amber/30 flex items-center justify-center text-amber font-semibold mono">mp</div>
+        <div class="min-w-0">
+          <div class="font-semibold">tinkr-micropython-runtime</div>
+          <div class="text-xs mono text-dim">0.3.1 · stable</div>
+        </div>
+        <span class="ml-auto text-[10px] mono px-1.5 py-0.5 rounded bg-green/15 text-green border border-green/30">free</span>
+      </div>
+      <p class="text-sm text-dim mt-3">Shared MicroPython runtime helpers. Required by all MCU plugins. mip + lib sync.</p>
+      <div class="flex items-center gap-1.5 text-[10px] mono mt-3 flex-wrap">
+        <span class="px-1.5 py-0.5 bg-surface-2 border border-default rounded">mip</span>
+        <span class="px-1.5 py-0.5 bg-surface-2 border border-default rounded">lib</span>
+        <span class="px-1.5 py-0.5 bg-surface-2 border border-default rounded">freeze</span>
+      </div>
+      <div class="mt-4 pt-3 border-t border-default flex items-center justify-between text-xs">
+        <span class="text-dim">★ 412 · 18,902 installs</span>
+        <button class="text-cyan hover:underline cursor-pointer">install →</button>
+      </div>
+    </article>
+  </div>
+</section>
+
+<!-- ================== PLUGIN GRID + FILTERS ================== -->
+<section id="grid" class="border-t border-default bg-surface-2">
+  <div class="max-w-7xl mx-auto px-6 py-16">
+    <div class="flex items-end justify-between flex-wrap gap-4">
+      <div>
+        <div class="text-xs mono uppercase tracking-widest text-cyan">browse</div>
+        <h2 class="display text-3xl font-semibold mt-2">All plugins</h2>
+        <p class="text-dim mt-2">180 community plugins · sorted by installs · filterable by chip family &amp; capability.</p>
+      </div>
+    </div>
+
+    <!-- Search + filter bar -->
+    <div class="mt-6 grid lg:grid-cols-[1fr_auto] gap-3 items-center">
+      <div class="relative">
+        <input class="w-full bg-bg border border-default rounded-md text-sm pl-9 pr-3 py-2.5 placeholder:text-muted focus:outline-none focus:border-cyan/60" placeholder="Search by name, chip, capability, or vendor…">
+        <span class="absolute left-3 top-2.5 text-muted text-sm">⌕</span>
+      </div>
+      <div class="flex items-center gap-2 flex-wrap">
+        <select class="bg-bg border border-default rounded-md text-sm px-3 py-2.5 focus:outline-none focus:border-cyan/60" aria-label="Filter by chip family">
+          <option>All families</option>
+          <option>esp32</option>
+          <option>rp2040</option>
+          <option>nrf52</option>
+          <option>stm32</option>
+        </select>
+        <select class="bg-bg border border-default rounded-md text-sm px-3 py-2.5 focus:outline-none focus:border-cyan/60" aria-label="Filter by capability">
+          <option>Any capability</option>
+          <option>flash</option>
+          <option>repl</option>
+          <option>serial plotter</option>
+          <option>wifi sim</option>
+        </select>
+        <select class="bg-bg border border-default rounded-md text-sm px-3 py-2.5 focus:outline-none focus:border-cyan/60" aria-label="Filter by maturity">
+          <option>Any maturity</option>
+          <option>stable</option>
+          <option>beta</option>
+          <option>experimental</option>
+        </select>
+        <select class="bg-bg border border-default rounded-md text-sm px-3 py-2.5 focus:outline-none focus:border-cyan/60" aria-label="Filter by price">
+          <option>Free &amp; paid</option>
+          <option>Free only</option>
+          <option>Paid only</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Active filter chips -->
+    <div class="mt-3 flex items-center gap-2 text-xs">
+      <span class="text-muted">filters:</span>
+      <span class="px-2 py-0.5 rounded-full bg-cyan/15 text-cyan border border-cyan/30 mono">capability: serial plotter ✕</span>
+      <span class="px-2 py-0.5 rounded-full bg-cyan/15 text-cyan border border-cyan/30 mono">family: esp32 ✕</span>
+      <button class="text-muted hover:text-default mono cursor-pointer">clear all</button>
+    </div>
+
+    <!-- Grid -->
+    <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-4 mt-6">
+      <!-- card 1: free -->
+      <article class="bg-surface border border-default rounded-lg p-4 hover:border-cyan/40 cursor-pointer">
+        <div class="flex items-center gap-3">
+          <div class="h-9 w-9 rounded-md bg-cyan/15 border border-cyan/30 flex items-center justify-center text-cyan font-semibold mono">e32</div>
+          <div class="min-w-0">
+            <div class="font-semibold truncate">tinkr-esp32</div>
+            <div class="text-xs mono text-dim">espressif · 1.2.3</div>
+          </div>
+          <span class="ml-auto text-[10px] mono px-1.5 py-0.5 rounded bg-green/15 text-green border border-green/30">free</span>
+        </div>
+        <p class="text-sm text-dim mt-3">The reference plugin. ESP32, S2, S3, C3, C6, C2.</p>
+        <div class="mt-4 pt-3 border-t border-default flex items-center justify-between text-xs">
+          <span class="text-dim">★ 342</span>
+          <span class="text-cyan">install →</span>
+        </div>
+      </article>
+      <!-- card 2: paid (one-time) -->
+      <article class="bg-surface border border-default rounded-lg p-4 hover:border-cyan/40 cursor-pointer relative overflow-hidden">
+        <span class="absolute right-0 top-0 text-[10px] mono px-2 py-0.5 rounded-bl-md bg-amber/20 text-amber border-l border-b border-amber/30">paid</span>
+        <div class="flex items-center gap-3">
+          <div class="h-9 w-9 rounded-md bg-magenta/15 border border-magenta/30 flex items-center justify-center text-magenta font-semibold mono">esp</div>
+          <div class="min-w-0">
+            <div class="font-semibold truncate">tinkr-esp32-matter</div>
+            <div class="text-xs mono text-dim">user-contrib · 0.1.0</div>
+          </div>
+        </div>
+        <p class="text-sm text-dim mt-3">Matter over WiFi for ESP32-S3. Includes commissioning + cluster example.</p>
+        <div class="mt-4 pt-3 border-t border-default flex items-center justify-between text-xs">
+          <span class="text-dim">★ 41 · $19 one-time</span>
+          <span class="text-cyan">install →</span>
+        </div>
+      </article>
+      <!-- card 3: paid bundle -->
+      <article class="bg-surface border border-default rounded-lg p-4 hover:border-cyan/40 cursor-pointer relative overflow-hidden">
+        <span class="absolute right-0 top-0 text-[10px] mono px-2 py-0.5 rounded-bl-md bg-amber/20 text-amber border-l border-b border-amber/30">paid</span>
+        <div class="flex items-center gap-3">
+          <div class="h-9 w-9 rounded-md bg-amber/15 border border-amber/30 flex items-center justify-center text-amber font-semibold mono">ulp</div>
+          <div class="min-w-0">
+            <div class="font-semibold truncate">tinkr-esp32-ulp</div>
+            <div class="text-xs mono text-dim">espressif · 0.2.0</div>
+          </div>
+        </div>
+        <p class="text-sm text-dim mt-3">ULP coprocessor toolchain &amp; examples. Sleep &lt; 150 µA.</p>
+        <div class="mt-4 pt-3 border-t border-default flex items-center justify-between text-xs">
+          <span class="text-dim">★ 18 · $9 one-time</span>
+          <span class="text-cyan">install →</span>
+        </div>
+      </article>
+      <!-- card 4: free -->
+      <article class="bg-surface border border-default rounded-lg p-4 hover:border-cyan/40 cursor-pointer">
+        <div class="flex items-center gap-3">
+          <div class="h-9 w-9 rounded-md bg-magenta/15 border border-magenta/30 flex items-center justify-center text-magenta font-semibold mono">rp</div>
+          <div class="min-w-0">
+            <div class="font-semibold truncate">tinkr-rp2040</div>
+            <div class="text-xs mono text-dim">raspberry pi · 0.8.0</div>
+          </div>
+          <span class="ml-auto text-[10px] mono px-1.5 py-0.5 rounded bg-green/15 text-green border border-green/30">free</span>
+        </div>
+        <p class="text-sm text-dim mt-3">Pico &amp; Pico W. Picotool + minny + WiFi helpers.</p>
+        <div class="mt-4 pt-3 border-t border-default flex items-center justify-between text-xs">
+          <span class="text-dim">★ 218</span>
+          <span class="text-cyan">install →</span>
+        </div>
+      </article>
+      <!-- card 5: paid -->
+      <article class="bg-surface border border-default rounded-lg p-4 hover:border-cyan/40 cursor-pointer relative overflow-hidden">
+        <span class="absolute right-0 top-0 text-[10px] mono px-2 py-0.5 rounded-bl-md bg-amber/20 text-amber border-l border-b border-amber/30">paid</span>
+        <div class="flex items-center gap-3">
+          <div class="h-9 w-9 rounded-md bg-blue/15 border border-blue/30 flex items-center justify-center text-blue font-semibold mono">sc</div>
+          <div class="min-w-0">
+            <div class="font-semibold truncate">tinkr-sniffer-can</div>
+            <div class="text-xs mono text-dim">user-contrib · 0.1.4</div>
+          </div>
+        </div>
+        <p class="text-sm text-dim mt-3">CAN-bus sniffer on Pico. Decode, plot, replay.</p>
+        <div class="mt-4 pt-3 border-t border-default flex items-center justify-between text-xs">
+          <span class="text-dim">★ 22 · $14 one-time</span>
+          <span class="text-cyan">install →</span>
+        </div>
+      </article>
+      <!-- card 6: free -->
+      <article class="bg-surface border border-default rounded-lg p-4 hover:border-cyan/40 cursor-pointer">
+        <div class="flex items-center gap-3">
+          <div class="h-9 w-9 rounded-md bg-cyan/15 border border-cyan/30 flex items-center justify-center text-cyan font-semibold mono">cw</div>
+          <div class="min-w-0">
+            <div class="font-semibold truncate">tinkr-circuitpython</div>
+            <div class="text-xs mono text-dim">adafruit · 0.4.0</div>
+          </div>
+          <span class="ml-auto text-[10px] mono px-1.5 py-0.5 rounded bg-green/15 text-green border border-green/30">free</span>
+        </div>
+        <p class="text-sm text-dim mt-3">CircuitPython runtime. UF2 bootloader, bundle, library sync.</p>
+        <div class="mt-4 pt-3 border-t border-default flex items-center justify-between text-xs">
+          <span class="text-dim">★ 156</span>
+          <span class="text-cyan">install →</span>
+        </div>
+      </article>
+    </div>
+    <div class="mt-8 text-center">
+      <button class="px-4 py-2 rounded-md border border-default hover:border-cyan/40 text-sm cursor-pointer">Load 50 more →</button>
+    </div>
+  </div>
+</section>
+
+<!-- ================== PLUGIN DETAIL ================== -->
+<section class="max-w-7xl mx-auto px-6 py-16">
+  <div class="text-xs mono uppercase tracking-widest text-cyan">plugin detail</div>
+  <h2 class="display text-3xl font-semibold mt-2">tinkr-esp32-matter</h2>
+  <p class="text-dim mt-2 max-w-3xl">An example plugin detail page. Same layout applies to every plugin in the marketplace — discovery → install → understand → contribute.</p>
+
+  <div class="mt-8 grid lg:grid-cols-[1fr_320px] gap-6">
+    <!-- left: detail -->
+    <div class="bg-surface border border-default rounded-lg p-6 space-y-6">
+      <div class="flex items-start gap-4">
+        <div class="h-14 w-14 rounded-md bg-magenta/15 border border-magenta/30 flex items-center justify-center text-magenta font-semibold mono text-lg">esp</div>
+        <div class="flex-1 min-w-0">
+          <div class="flex items-center gap-2 flex-wrap">
+            <h3 class="display text-2xl font-semibold">tinkr-esp32-matter</h3>
+            <span class="text-[10px] mono px-1.5 py-0.5 rounded bg-amber/15 text-amber border border-amber/30">paid · $19</span>
+            <span class="text-[10px] mono px-1.5 py-0.5 rounded bg-blue/15 text-blue border border-blue/30">one-time</span>
+            <span class="text-[10px] mono px-1.5 py-0.5 rounded bg-surface-2 border border-default">beta</span>
+          </div>
+          <div class="text-dim mt-1">by <a class="text-cyan hover:underline" href="#">@ronie</a> · MIT-licensed source · 41 stars · 124 installs</div>
+        </div>
+        <div class="flex flex-col gap-2">
+          <button class="px-4 py-2 rounded-md bg-cyan text-bg font-medium hover:bg-cyan-300 cursor-pointer">install $19</button>
+          <button class="px-4 py-2 rounded-md border border-default hover:border-cyan/40 cursor-pointer text-sm">view source</button>
+        </div>
+      </div>
+
+      <p class="text-default">Adds Matter-over-WiFi support to <code class="mono text-cyan">tinkr-esp32</code> on the S3 family. Includes commissioning, on/off + level-control cluster examples, and a test rig that runs against the official Matter test harness.</p>
+
+      <div>
+        <h4 class="text-sm font-semibold text-dim mb-2">Capabilities added</h4>
+        <div class="flex flex-wrap gap-2 text-[11px] mono">
+          <span class="px-2 py-1 rounded bg-surface-2 border border-default">wifi.commission</span>
+          <span class="px-2 py-1 rounded bg-surface-2 border border-default">matter.on_off</span>
+          <span class="px-2 py-1 rounded bg-surface-2 border border-default">matter.level_control</span>
+          <span class="px-2 py-1 rounded bg-surface-2 border border-default">matter.test_harness</span>
+        </div>
+      </div>
+
+      <div>
+        <h4 class="text-sm font-semibold text-dim mb-2">Quick start</h4>
+        <pre class="mono text-[12.5px] bg-bg border border-default rounded p-3 leading-relaxed overflow-x-auto scrollbar"><span class="text-cyan-d">$</span> tinkr plugin add tinkr-esp32-matter
+<span class="text-cyan-d">$</span> tinkr device use esp32s3-left
+<span class="text-cyan-d">$</span> tinkr project deploy --example kitchen-light
+<span class="text-cyan-d">$</span> tinkr matter commission --qr-code ./qr.png</pre>
+      </div>
+
+      <div>
+        <h4 class="text-sm font-semibold text-dim mb-2">Compatibility</h4>
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+          <div class="bg-surface-2 border border-default rounded p-2"><div class="text-muted text-[10px] uppercase">Families</div><div class="mt-0.5">esp32s3, esp32c6</div></div>
+          <div class="bg-surface-2 border border-default rounded p-2"><div class="text-muted text-[10px] uppercase">Boards</div><div class="mt-0.5">ESP32-S3-DevKitC-1, M5Stack-CoreS3</div></div>
+          <div class="bg-surface-2 border border-default rounded p-2"><div class="text-muted text-[10px] uppercase">Firmware</div><div class="mt-0.5">micropython 1.24+</div></div>
+          <div class="bg-surface-2 border border-default rounded p-2"><div class="text-muted text-[10px] uppercase">Tests</div><div class="mt-0.5 text-green">12 / 12 pass</div></div>
+        </div>
+      </div>
+
+      <div>
+        <h4 class="text-sm font-semibold text-dim mb-2">What's inside</h4>
+        <ul class="text-sm space-y-1.5">
+          <li class="flex items-center gap-2"><span class="text-cyan">▸</span> <code class="mono">cli/tinkr_esp32_matter_commission.py</code> · QR-code-driven commissioning</li>
+          <li class="flex items-center gap-2"><span class="text-cyan">▸</span> <code class="mono">cli/tinkr_esp32_matter_test_harness.py</code> · runs against official test suite</li>
+          <li class="flex items-center gap-2"><span class="text-cyan">▸</span> <code class="mono">examples/kitchen-light/main.py</code> · on/off + level cluster demo</li>
+          <li class="flex items-center gap-2"><span class="text-cyan">▸</span> <code class="mono">knowledge/datasheets/matter-core-spec.pdf</code> · 1.2 spec</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- right: sidebar -->
+    <aside class="space-y-4">
+      <div class="bg-surface border border-default rounded-lg p-4">
+        <div class="text-xs mono text-muted uppercase">purchase</div>
+        <div class="display text-2xl font-semibold mt-1">$19 <span class="text-sm font-normal text-dim">one-time</span></div>
+        <ul class="text-sm text-dim mt-3 space-y-1.5">
+          <li class="flex items-center gap-2"><span class="text-green">✓</span> Lifetime download, all versions</li>
+          <li class="flex items-center gap-2"><span class="text-green">✓</span> 1 year of updates included</li>
+          <li class="flex items-center gap-2"><span class="text-green">✓</span> Source on GitHub, MIT</li>
+          <li class="flex items-center gap-2"><span class="text-green">✓</span> 70% goes to the creator</li>
+        </ul>
+        <button class="mt-4 w-full px-3 py-2 rounded-md bg-cyan text-bg font-medium hover:bg-cyan-300 cursor-pointer">install $19</button>
+        <div class="text-[10px] text-muted mt-2 text-center">30-day refund · no questions asked</div>
+      </div>
+      <div class="bg-surface border border-default rounded-lg p-4">
+        <div class="text-xs mono text-muted uppercase">include in bundle</div>
+        <div class="mt-2 space-y-2 text-sm">
+          <div class="flex items-center justify-between"><span>Maker Bundle <span class="text-dim">(8 plugins)</span></span><span class="font-semibold">$49</span></div>
+          <div class="flex items-center justify-between"><span>Pro Bundle <span class="text-dim">(20 plugins)</span></span><span class="font-semibold">$99</span></div>
+        </div>
+        <a class="text-xs text-cyan hover:underline mt-3 block" href="#pricing">see full pricing →</a>
+      </div>
+      <div class="bg-surface border border-default rounded-lg p-4">
+        <div class="text-xs mono text-muted uppercase">creator</div>
+        <div class="flex items-center gap-3 mt-2">
+          <div class="h-9 w-9 rounded-full bg-gradient-to-br from-cyan to-magenta flex items-center justify-center text-bg font-semibold">r</div>
+          <div>
+            <div class="font-medium">@ronie</div>
+            <div class="text-xs mono text-dim">3 plugins · 11k downloads</div>
+          </div>
+        </div>
+        <p class="text-xs text-dim mt-2">Maintains tinkr-esp32, tinkr-esp32-matter, tinkr-sniffer-can. Verified creator since v0.5.</p>
+      </div>
+    </aside>
+  </div>
+</section>
+
+<!-- ================== PRICING ================== -->
+<section id="pricing" class="border-t border-default bg-surface-2">
+  <div class="max-w-7xl mx-auto px-6 py-16">
+    <div class="text-center max-w-2xl mx-auto">
+      <div class="text-xs mono uppercase tracking-widest text-cyan">pricing</div>
+      <h2 class="display text-3xl font-semibold mt-2">Pay once. Own it.</h2>
+      <p class="text-dim mt-3">Every paid plugin is a one-time purchase, lifetime re-download, with the source always available on GitHub. 70% of every sale goes to the creator. No subscriptions. No DRM. No telemetry in the plugin code.</p>
+    </div>
+
+    <div class="grid md:grid-cols-3 gap-4 mt-10">
+      <div class="bg-surface border border-default rounded-lg p-6">
+        <div class="text-xs mono text-muted uppercase">per-plugin</div>
+        <div class="display text-4xl font-semibold mt-1">$9–$29</div>
+        <div class="text-sm text-dim mt-1">per plugin, one-time</div>
+        <ul class="text-sm text-dim mt-5 space-y-2">
+          <li class="flex items-start gap-2"><span class="text-cyan mt-0.5">✓</span> Lifetime download</li>
+          <li class="flex items-start gap-2"><span class="text-cyan mt-0.5">✓</span> 1 year of updates</li>
+          <li class="flex items-start gap-2"><span class="text-cyan mt-0.5">✓</span> MIT source on GitHub</li>
+          <li class="flex items-start gap-2"><span class="text-cyan mt-0.5">✓</span> 70% to creator</li>
+        </ul>
+        <a href="#grid" class="block mt-6 text-center px-4 py-2 rounded-md border border-default hover:border-cyan/40 text-sm cursor-pointer">browse plugins →</a>
+      </div>
+      <div class="bg-surface border-2 border-cyan rounded-lg p-6 relative">
+        <span class="absolute -top-2 right-4 text-[10px] mono px-2 py-0.5 rounded bg-cyan text-bg font-semibold">most popular</span>
+        <div class="text-xs mono text-cyan uppercase">maker bundle</div>
+        <div class="display text-4xl font-semibold mt-1">$49</div>
+        <div class="text-sm text-dim mt-1">8 paid plugins, one-time</div>
+        <ul class="text-sm text-dim mt-5 space-y-2">
+          <li class="flex items-start gap-2"><span class="text-cyan mt-0.5">✓</span> Everything in per-plugin</li>
+          <li class="flex items-start gap-2"><span class="text-cyan mt-0.5">✓</span> ~$6 per plugin, save 30%</li>
+          <li class="flex items-start gap-2"><span class="text-cyan mt-0.5">✓</span> Lifetime updates (no expiry)</li>
+          <li class="flex items-start gap-2"><span class="text-cyan mt-0.5">✓</span> 1 free plugin slot to gift</li>
+        </ul>
+        <a href="#" class="block mt-6 text-center px-4 py-2 rounded-md bg-cyan text-bg font-medium hover:bg-cyan-300 cursor-pointer">get maker bundle →</a>
+      </div>
+      <div class="bg-surface border border-default rounded-lg p-6">
+        <div class="text-xs mono text-muted uppercase">pro bundle</div>
+        <div class="display text-4xl font-semibold mt-1">$99</div>
+        <div class="text-sm text-dim mt-1">20 paid plugins, one-time</div>
+        <ul class="text-sm text-dim mt-5 space-y-2">
+          <li class="flex items-start gap-2"><span class="text-cyan mt-0.5">✓</span> Everything in maker</li>
+          <li class="flex items-start gap-2"><span class="text-cyan mt-0.5">✓</span> Early access to new plugins</li>
+          <li class="flex items-start gap-2"><span class="text-cyan mt-0.5">✓</span> Vote on the plugin roadmap</li>
+          <li class="flex items-start gap-2"><span class="text-cyan mt-0.5">✓</span> Private creator Discord channel</li>
+        </ul>
+        <a href="#" class="block mt-6 text-center px-4 py-2 rounded-md border border-default hover:border-cyan/40 text-sm cursor-pointer">get pro bundle →</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================== STAYS TRUE TO CONTRIBUTIONS ================== -->
+<section class="border-t border-default">
+  <div class="max-w-5xl mx-auto px-6 py-16">
+    <div class="text-center max-w-2xl mx-auto">
+      <div class="text-xs mono uppercase tracking-widest text-cyan">the contract</div>
+      <h2 class="display text-3xl font-semibold mt-2">Stays true to contributions.</h2>
+      <p class="text-dim mt-3">Three commitments Tinkr makes to every plugin author and every user. We wrote them down so they're enforceable, not aspirational.</p>
+    </div>
+    <div class="grid md:grid-cols-3 gap-4 mt-10">
+      <div class="bg-surface border border-default rounded-lg p-6">
+        <div class="h-10 w-10 rounded-md bg-cyan/15 border border-cyan/30 flex items-center justify-center text-cyan font-semibold mono">01</div>
+        <h3 class="display text-lg font-semibold mt-3">You own your plugin.</h3>
+        <p class="text-sm text-dim mt-2">Source lives in your GitHub repo, always. MIT or your choice of license. We cannot lock you out, take your plugin down, or change your license. If Tinkr disappears, your plugin still installs from git.</p>
+      </div>
+      <div class="bg-surface border border-default rounded-lg p-6">
+        <div class="h-10 w-10 rounded-md bg-magenta/15 border border-magenta/30 flex items-center justify-center text-magenta font-semibold mono">02</div>
+        <h3 class="display text-lg font-semibold mt-3">70% of every sale is yours.</h3>
+        <p class="text-sm text-dim mt-2">Tinkr takes 30% to cover registry, payment, and the curation queue. The rest is yours. Payouts monthly, transparent ledger, no minimum threshold. If your plugin goes paid → free, you keep the recognition.</p>
+      </div>
+      <div class="bg-surface border border-default rounded-lg p-6">
+        <div class="h-10 w-10 rounded-md bg-amber/15 border border-amber/30 flex items-center justify-center text-amber font-semibold mono">03</div>
+        <h3 class="display text-lg font-semibold mt-3">You control your code.</h3>
+        <p class="text-sm text-dim mt-2">No "AI rewrite" of your plugin. No silent updates. Every version is a git tag, every changelog entry is yours to write. If the user is offline, the plugin still works. If you delete your plugin, we delete the marketplace listing within 24 hours.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================== BECOME A CREATOR ================== -->
+<section id="creators" class="border-t border-default bg-surface-2">
+  <div class="max-w-7xl mx-auto px-6 py-16 grid lg:grid-cols-2 gap-10 items-center">
+    <div>
+      <div class="text-xs mono uppercase tracking-widest text-cyan">creator program</div>
+      <h2 class="display text-3xl font-semibold mt-2">Build the plugin you wish existed.</h2>
+      <p class="text-dim mt-3 text-lg">If you've written a Tinkr plugin that solves a real problem, the creator program is how you ship it, get paid, and grow a user base. We curate; you build.</p>
+      <ul class="mt-6 space-y-3 text-sm">
+        <li class="flex items-start gap-2"><span class="text-cyan mt-0.5">✓</span> 1-line install: <code class="mono text-cyan">tinkr plugin install your-plugin</code></li>
+        <li class="flex items-start gap-2"><span class="text-cyan mt-0.5">✓</span> Auto-derives MCP tools from your CLI tools (no boilerplate)</li>
+        <li class="flex items-start gap-2"><span class="text-cyan mt-0.5">✓</span> One-time paid, or free, or freemium — your call</li>
+        <li class="flex items-start gap-2"><span class="text-cyan mt-0.5">✓</span> Promotion: featured slot, monthly newsletter, Discord pin</li>
+      </ul>
+      <div class="mt-7 flex flex-wrap items-center gap-3">
+        <a href="#" class="inline-flex items-center gap-2 bg-cyan text-bg px-4 py-2.5 rounded-md font-medium hover:bg-cyan-300 cursor-pointer">apply to the program →</a>
+        <a href="#" class="inline-flex items-center gap-2 border border-default px-4 py-2.5 rounded-md font-medium hover:border-cyan/40 cursor-pointer">read the creator handbook</a>
+      </div>
+      <p class="text-xs text-muted mt-4">Average first-month revenue for a polished ESP32 plugin: <span class="text-default">$280</span>. Average for a paid RP2040 toolchain: <span class="text-default">$640</span>.</p>
+    </div>
+    <div class="bg-surface border border-default rounded-lg p-6">
+      <div class="text-xs mono text-muted uppercase">vendor partnership</div>
+      <h3 class="display text-xl font-semibold mt-1">Ship a first-party plugin for your chip.</h3>
+      <p class="text-dim text-sm mt-2">If you're a silicon vendor — Espressif, Raspberry Pi, Nordic, Adafruit, Seeed — and you want a Tinkr plugin for your boards, we'll co-tinker on with you and badge it as vendor-maintained.</p>
+      <div class="mt-4 grid grid-cols-2 gap-3 text-sm">
+        <div class="bg-surface-2 border border-default rounded p-3">
+          <div class="text-muted text-[10px] uppercase">You provide</div>
+          <ul class="mt-1 space-y-0.5 text-xs">
+            <li>· datasheets &amp; errata</li>
+            <li>· a board engineer for 2 calls</li>
+            <li>· preview firmware + boot ROM</li>
+          </ul>
+        </div>
+        <div class="bg-surface-2 border border-default rounded p-3">
+          <div class="text-muted text-[10px] uppercase">We provide</div>
+          <ul class="mt-1 space-y-0.5 text-xs">
+            <li>· co-built plugin + tests</li>
+            <li>· "vendor" badge + landing</li>
+            <li>· 0% Tinkr cut on your plugin</li>
+          </ul>
+        </div>
+      </div>
+      <div class="mt-5 flex items-center gap-3">
+        <a href="#" class="px-4 py-2 rounded-md bg-cyan text-bg font-medium hover:bg-cyan-300 cursor-pointer text-sm">start a vendor partnership</a>
+        <span class="text-xs text-muted">espressif · raspberry pi · nordic · adafruit</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer class="border-t border-default bg-bg">
+  <div class="max-w-7xl mx-auto px-6 py-10 grid grid-cols-2 md:grid-cols-5 gap-6 text-sm">
+    <div class="col-span-2">
+      <div class="flex items-center gap-2">
+        <span class="relative inline-flex h-5 w-5 items-center justify-center">
+          <span class="absolute inset-0 rounded-md bg-cyan-500/20"></span>
+          <span class="relative h-2 w-2 rounded-sm bg-cyan-400"></span>
+        </span>
+        <span class="display font-semibold">tinkr</span>
+      </div>
+      <p class="text-dim text-xs mt-2 max-w-sm">Hardware plugins. Made by the community. Open-source core, opt-in paid extras, project-as-memory.</p>
+      <p class="text-muted text-[11px] mono mt-4">© 2026 tinkr-mvp · MIT</p>
+    </div>
+    <div>
+      <div class="text-xs mono text-muted uppercase mb-2">product</div>
+      <ul class="space-y-1.5 text-dim">
+        <li><a href="01-cli-output.html" class="hover:text-default">CLI</a></li>
+        <li><a href="02-tauri-shell.html" class="hover:text-default">Tauri shell</a></li>
+        <li><a href="04-docs-site.html" class="hover:text-default">docs</a></li>
+        <li><a href="05-kb-viewer.html" class="hover:text-default">knowledge base</a></li>
+      </ul>
+    </div>
+    <div>
+      <div class="text-xs mono text-muted uppercase mb-2">community</div>
+      <ul class="space-y-1.5 text-dim">
+        <li><a href="#" class="hover:text-default">GitHub ↗</a></li>
+        <li><a href="#" class="hover:text-default">Discord ↗</a></li>
+        <li><a href="#" class="hover:text-default">creator handbook</a></li>
+        <li><a href="#" class="hover:text-default">contribution guide</a></li>
+      </ul>
+    </div>
+    <div>
+      <div class="text-xs mono text-muted uppercase mb-2">legal</div>
+      <ul class="space-y-1.5 text-dim">
+        <li><a href="#" class="hover:text-default">terms</a></li>
+        <li><a href="#" class="hover:text-default">privacy</a></li>
+        <li><a href="#" class="hover:text-default">creator agreement</a></li>
+        <li><a href="#" class="hover:text-default">refund policy</a></li>
+      </ul>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>

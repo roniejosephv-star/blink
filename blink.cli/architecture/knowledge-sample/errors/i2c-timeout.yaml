@@ -1,0 +1,24 @@
+type: error
+id: error/i2c-timeout
+category: i2c
+error_code: OSError_ETIMEDOUT
+summary: "I2C scan or read times out (ETIMEDOUT, errno 110)"
+likely_causes:
+  - fact_id: fact/esp32-s3-i2c-pullups
+    summary: "ESP32 I2C pins have no internal pull-up resistors"
+  - summary: "Wrong I2C address (check the device datasheet for the actual address)"
+  - summary: "Wrong GPIO pins (verify SDA/SCL match the wiring, not MicroPython defaults)"
+  - summary: "Wiring error (loose connection, swapped SDA/SCL, missing ground)"
+  - summary: "Device is not powered (check VCC and GND)"
+fix_steps:
+  - "Add 4.7kΩ pull-up resistors from SDA to 3.3V and from SCL to 3.3V. ESP32 has no reliable internal pull-ups for I2C."
+  - "Run i2c.scan() to find the actual address. Common I2C addresses: 0x76/0x77 (BME280), 0x44/0x45 (SHT31), 0x68 (MPU6050/DS3231), 0x57 (MAX17048)."
+  - "Verify SDA and SCL are connected to the correct pins. Set them explicitly in code: i2c = I2C(0, scl=Pin(9), sda=Pin(8), freq=100_000). Do not rely on MicroPython defaults — they vary by port."
+  - "Check wiring: confirm SDA and SCL are not swapped, all grounds are connected, and the device has stable 3.3V power."
+  - "Try a slower bus speed: freq=10_000 (10 kHz). If that works, the issue is signal integrity at higher speeds (long wires, many devices, weak pull-ups)."
+verify_steps:
+  - "Run i2c.scan() and confirm the expected address appears in the list."
+  - "Read a known register (e.g., for BME280: 0xD0 should return 0x60) to confirm the device is responding correctly."
+contributed_by: "@community"
+contributed_at: "2026-08-12T14:32:00Z"
+verified_at: "2026-08-12"

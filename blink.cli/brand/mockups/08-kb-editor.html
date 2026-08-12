@@ -1,0 +1,768 @@
+<!doctype html>
+<!--
+  Tinkr Mockup 08 — Knowledge Base Author Surface (v1.0+ surface)
+  ======================================================================
+  Design notes:
+
+  1. THE KB EDITOR IS A TWO-PANE STAGE. Left = form, right = live preview.
+     Author on the left, see what users will see on the right, in real
+     time. The preview is a faithful render of mockup 05 (KB viewer) —
+     same chips, same score color, same YAML tab, same related-entries
+     card. Consistency between author and reader is the whole point of
+     a single shared surface.
+
+  2. THE ENTRY TYPE IS A SEGMENTED CONTROL, NOT A DROPDOWN. The 4
+     entry kinds (recipe / fact / error / pattern) are the vocabulary
+     of the product — they appear in the capture layer, the KB
+     viewer, the search filters, and now the editor. Showing them as
+     a segmented control teaches the vocabulary by being seen.
+
+  3. STEPS ARE THE HEART OF A RECIPE. Each step has a description,
+     a code block, and a verification. They are the unit of
+     re-use. The "+ add step" CTA is the most-used action on this
+     screen, so it lives at the top of the list and the bottom.
+
+  4. CODE BLOCKS USE SHIKI-CLASS MARKUP, NOT A JS LIB. Inline
+     <pre><code class="shiki"> with the same class names Shiki
+     produces. A future swap to live Shiki rendering is a one-line
+     change; the visual contract is already locked.
+
+  5. THE FOOTER IS A 3-STAGE FLOW. draft → review → published.
+     Each action is its own button. "Save + publish" is amber
+     (the "ship it" color) and is the only one that can move the
+     entry straight to the live KB. "Save + submit for review" is
+     cyan. "Save as draft" is neutral.
+
+  6. 60 / 40 SPLIT. Forms want width; previews want context. The
+     preview is also scrollable, so a long entry doesn't push
+     the form offscreen.
+  ======================================================================
+-->
+<html lang="en" class="dark">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Tinkr — Knowledge Base Author</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0B1120;
+    --surface: #0F172A;
+    --surface-2: #111827;
+    --surface-3: #0A0F1C;
+    --border: #1F2937;
+    --border-strong: #334155;
+    --text: #E2E8F0;
+    --text-dim: #94A3B8;
+    --text-muted: #64748B;
+    --primary: #5EEAD4;
+    --primary-deep: #06B6D4;
+    --accent: #FB923C;
+    --secondary: #A78BFA;
+    --green: #10B981;
+    --red: #EF4444;
+    --blue: #60A5FA;
+  }
+  html.light {
+    --bg: #FAFAFA;
+    --surface: #FFFFFF;
+    --surface-2: #F1F5F9;
+    --surface-3: #E2E8F0;
+    --border: #E2E8F0;
+    --border-strong: #CBD5E1;
+    --text: #0F172A;
+    --text-dim: #475569;
+    --text-muted: #64748B;
+  }
+  html, body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', system-ui, sans-serif;
+  }
+  .mono { font-family: 'JetBrains Mono', ui-monospace, monospace; }
+  .bg-bg { background-color: var(--bg); }
+  .bg-surface { background-color: var(--surface); }
+  .bg-surface-2 { background-color: var(--surface-2); }
+  .bg-surface-3 { background-color: var(--surface-3); }
+  .border-default { border-color: var(--border); }
+  .border-strong { border-color: var(--border-strong); }
+  .text-default { color: var(--text); }
+  .text-dim { color: var(--text-dim); }
+  .text-muted { color: var(--text-muted); }
+  .text-primary { color: var(--primary); }
+  .text-accent { color: var(--accent); }
+  .text-secondary { color: var(--secondary); }
+  .text-green { color: var(--green); }
+  .text-red { color: var(--red); }
+  .text-blue { color: var(--blue); }
+  .bg-primary\/10 { background-color: rgba(94, 234, 212, 0.10); }
+  .bg-primary\/20 { background-color: rgba(94, 234, 212, 0.20); }
+  .bg-accent\/10 { background-color: rgba(251, 146, 60, 0.10); }
+  .bg-accent\/20 { background-color: rgba(251, 146, 60, 0.20); }
+  .bg-secondary\/10 { background-color: rgba(167, 139, 250, 0.10); }
+  .bg-secondary\/20 { background-color: rgba(167, 139, 250, 0.20); }
+  .bg-green\/10 { background-color: rgba(16, 185, 129, 0.10); }
+  .bg-red\/10 { background-color: rgba(239, 68, 68, 0.10); }
+  .border-primary\/30 { border-color: rgba(94, 234, 212, 0.30); }
+  .border-primary\/40 { border-color: rgba(94, 234, 212, 0.40); }
+  .border-accent\/30 { border-color: rgba(251, 146, 60, 0.30); }
+  .border-secondary\/30 { border-color: rgba(167, 139, 250, 0.30); }
+  .border-red\/30 { border-color: rgba(239, 68, 68, 0.30); }
+  .border-green\/30 { border-color: rgba(16, 185, 129, 0.30); }
+  /* Type chip colors (re-used from mockup 05) */
+  .chip-error  { background: rgba(239, 68, 68, 0.15);  color: #FCA5A5; border: 1px solid rgba(239,68,68,0.30); }
+  .chip-fact   { background: rgba(94, 234, 212, 0.12); color: #5EEAD4; border: 1px solid rgba(94,234,212,0.30); }
+  .chip-pattern{ background: rgba(167,139,250, 0.15); color: #C4B5FD; border: 1px solid rgba(167,139,250,0.30); }
+  .chip-recipe { background: rgba(251,146,60, 0.15);  color: #FB923C; border: 1px solid rgba(251,146,60,0.30); }
+  .chip-story  { background: rgba(96,165,250, 0.15);  color: #93C5FD; border: 1px solid rgba(96,165,250,0.30); }
+  html.light .chip-error   { color: #B91C1C; }
+  html.light .chip-fact    { color: #0F766E; }
+  html.light .chip-pattern { color: #6D28D9; }
+  html.light .chip-recipe  { color: #C2410C; }
+  html.light .chip-story   { color: #1D4ED8; }
+  /* Shiki-class syntax (no JS) */
+  .shiki { background: var(--surface-3); }
+  .tk-kw { color: #A78BFA; }
+  .tk-fn { color: #5EEAD4; }
+  .tk-st { color: #FBBF24; }
+  .tk-nu { color: #F472B6; }
+  .tk-cm { color: #64748B; font-style: italic; }
+  .tk-va { color: #E2E8F0; }
+  .tk-pu { color: #94A3B8; }
+  .tk-cl { color: #FB923C; }
+  html.light .tk-kw { color: #7C3AED; }
+  html.light .tk-fn { color: #0E7490; }
+  html.light .tk-st { color: #B45309; }
+  html.light .tk-nu { color: #BE185D; }
+  html.light .tk-va { color: #0F172A; }
+  /* Markdown rendering */
+  .md h2 { font-size: 1.25rem; font-weight: 600; margin-top: 1rem; margin-bottom: 0.5rem; }
+  .md h3 { font-size: 1.05rem; font-weight: 600; margin-top: 0.75rem; margin-bottom: 0.35rem; }
+  .md p  { margin-top: 0.5rem; }
+  .md ul { list-style: disc; padding-left: 1.25rem; margin-top: 0.5rem; }
+  .md ol { list-style: decimal; padding-left: 1.5rem; margin-top: 0.5rem; }
+  .md code { font-family: 'JetBrains Mono', monospace; background: var(--surface-3); padding: 1px 4px; border-radius: 3px; font-size: 0.875em; }
+  .md strong { font-weight: 600; }
+  .md em { font-style: italic; }
+  .md a { color: var(--primary); text-decoration: underline; text-underline-offset: 2px; }
+  /* Mac window */
+  .mac-chrome {
+    background: linear-gradient(180deg, #1E293B 0%, #0F172A 100%);
+  }
+  html.light .mac-chrome {
+    background: linear-gradient(180deg, #E2E8F0 0%, #CBD5E1 100%);
+  }
+  .scrollbar::-webkit-scrollbar { width: 8px; height: 8px; }
+  .scrollbar::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+  .scrollbar::-webkit-scrollbar-track { background: transparent; }
+  /* Rich text editor content */
+  .rt-editor {
+    min-height: 110px;
+  }
+  .rt-editor:focus { outline: none; }
+  .rt-editor:empty:before {
+    content: attr(data-placeholder);
+    color: var(--text-muted);
+    pointer-events: none;
+  }
+  /* focus rings */
+  *:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; border-radius: 4px; }
+  /* step dot */
+  .step-num {
+    width: 28px; height: 28px;
+    border-radius: 999px;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--surface-3);
+    color: var(--accent);
+    border: 1px solid var(--border-strong);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    font-weight: 600;
+  }
+  /* toolbar button */
+  .rt-btn {
+    height: 30px; min-width: 30px;
+    padding: 0 6px;
+    display: inline-flex; align-items: center; justify-content: center;
+    border-radius: 4px;
+    color: var(--text-dim);
+  }
+  .rt-btn:hover { background: var(--surface-2); color: var(--text); }
+  .rt-btn[aria-pressed="true"] { background: var(--surface-3); color: var(--primary); }
+  /* radio + checkbox */
+  .custom-radio { accent-color: var(--primary); }
+  /* chip-input */
+  .chip-input-add {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    border: 1px dashed var(--border-strong);
+    color: var(--text-dim);
+    font-size: 11px;
+    cursor: pointer;
+  }
+  .chip-input-add:hover { border-color: var(--primary); color: var(--primary); }
+  /* step number pulse for the in-progress one */
+  @keyframes ring-soft {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(251, 146, 60, 0.0); }
+    50%      { box-shadow: 0 0 0 4px rgba(251, 146, 60, 0.15); }
+  }
+  .step-active .step-num { animation: ring-soft 1.8s ease-in-out infinite; }
+  /* segmented control */
+  .seg { display: inline-flex; background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; padding: 3px; }
+  .seg button {
+    padding: 4px 12px;
+    font-size: 12px;
+    border-radius: 5px;
+    color: var(--text-dim);
+    display: inline-flex; align-items: center; gap: 6px;
+  }
+  .seg button:hover { color: var(--text); }
+  .seg button[aria-pressed="true"] { background: var(--surface-3); color: var(--text); box-shadow: 0 0 0 1px var(--border-strong); }
+</style>
+</head>
+<body class="min-h-screen">
+
+<!-- Page wrapper -->
+<div class="max-w-[1500px] mx-auto px-6 py-8 space-y-6">
+
+  <!-- Top doc header -->
+  <header class="flex items-center justify-between flex-wrap gap-4">
+    <div>
+      <div class="text-xs mono uppercase tracking-widest text-primary">v1.0+ surface · knowledge base author</div>
+      <h1 class="text-3xl md:text-4xl font-semibold tracking-tight mt-2">Author a KB entry. <span class="text-primary">See it as readers will.</span></h1>
+      <p class="text-dim mt-3 max-w-2xl">A two-pane stage: write on the left, watch the live render on the right. The same surface the community sees, the same chips, the same score color. "Stays true to contributions" means the author and the reader share the exact same view.</p>
+    </div>
+    <div class="flex items-center gap-2">
+      <a href="05-kb-viewer.html" class="text-xs mono px-3 py-1.5 rounded-md bg-surface-2 border border-default hover:border-primary/40">← kb viewer</a>
+      <a href="09-plugin-dev-kit.html" class="text-xs mono px-3 py-1.5 rounded-md bg-surface-2 border border-default hover:border-primary/40">plugin dev kit →</a>
+    </div>
+  </header>
+
+  <!-- ====================== THE IDE WINDOW ====================== -->
+  <div class="rounded-xl overflow-hidden border border-default">
+
+    <!-- Title bar -->
+    <div class="mac-chrome border-b border-default px-4 h-9 flex items-center gap-3 select-none" role="banner" aria-label="Window title bar">
+      <div class="flex items-center gap-1.5" role="group" aria-label="Window controls">
+        <button class="h-3 w-3 rounded-full bg-red-500 hover:bg-red-400 cursor-pointer" aria-label="Close window"></button>
+        <button class="h-3 w-3 rounded-full bg-amber-400 hover:bg-amber-300 cursor-pointer" aria-label="Minimize window"></button>
+        <button class="h-3 w-3 rounded-full bg-emerald-500 hover:bg-emerald-400 cursor-pointer" aria-label="Maximize window"></button>
+      </div>
+      <div class="flex-1 text-center text-[11px] mono text-dim">
+        <span class="text-default">kitchen-sensor</span> · <span class="text-primary">⎇</span> <span class="text-default">main</span> · <span class="text-muted">author · KB entry · draft</span>
+      </div>
+      <div class="flex items-center gap-2 text-[11px] mono text-muted">
+        <button onclick="document.documentElement.classList.toggle('light')" class="px-2 py-0.5 rounded hover:bg-surface-2 cursor-pointer" aria-label="Toggle light/dark theme" title="Toggle theme (⌘⇧L)">
+          <span class="dark:hidden">☀ light</span>
+          <span class="hidden dark:inline">◐ dark</span>
+        </button>
+        <span>⌘S save</span>
+      </div>
+    </div>
+
+    <!-- ====================== MAIN LAYOUT ====================== -->
+    <div class="grid grid-cols-[220px_1fr] h-[760px] bg-bg">
+
+      <!-- ============ LEFT: project tree ============ -->
+      <aside class="border-r border-default bg-surface-2 flex flex-col" aria-label="Project tree">
+        <div class="px-3 h-9 flex items-center justify-between border-b border-default text-[11px] mono uppercase tracking-wider text-dim">
+          <span>explorer</span>
+          <button class="text-primary hover:opacity-80 cursor-pointer" aria-label="Refresh tree">⟳</button>
+        </div>
+        <div class="flex-1 overflow-y-auto scrollbar text-[12.5px]">
+          <!-- root -->
+          <div class="px-2 py-1 flex items-center gap-1 text-dim hover:text-default cursor-pointer">
+            <svg class="h-3 w-3 transition-transform" viewBox="0 0 20 20" fill="currentColor"><path d="M5.23 7.21a.75.75 0 011.06.02L10 11.06l3.71-3.83a.75.75 0 111.08 1.04l-4.25 4.39a.75.75 0 01-1.08 0L5.21 8.27a.75.75 0 01.02-1.06z"/></svg>
+            <span>kitchen-sensor</span>
+          </div>
+          <div class="pl-3">
+            <div class="px-2 py-1 flex items-center gap-1.5 text-dim hover:text-default cursor-pointer">
+              <svg class="h-3 w-3 transition-transform -rotate-90" viewBox="0 0 20 20" fill="currentColor"><path d="M5.23 7.21a.75.75 0 011.06.02L10 11.06l3.71-3.83a.75.75 0 111.08 1.04l-4.25 4.39a.75.75 0 01-1.08 0L5.21 8.27a.75.75 0 01.02-1.06z"/></svg>
+              <span class="text-blue-400">📁</span><span>knowledge/</span>
+            </div>
+            <div class="pl-5 space-y-0.5">
+              <div class="px-2 py-1 flex items-center gap-1.5 text-dim hover:text-default cursor-pointer"><span class="text-blue-400">📁</span><span>chips/</span></div>
+              <div class="pl-4 space-y-0.5">
+                <div class="px-2 py-1 flex items-center gap-1.5 text-dim hover:text-default cursor-pointer"><span>📄</span><span class="mono">esp32.json</span></div>
+                <div class="px-2 py-1 flex items-center gap-1.5 text-dim hover:text-default cursor-pointer"><span>📄</span><span class="mono">esp32s3.json</span></div>
+                <div class="px-2 py-1 flex items-center gap-1.5 text-dim hover:text-default cursor-pointer"><span>📄</span><span class="mono">bme280.json</span></div>
+              </div>
+              <div class="px-2 py-1 flex items-center gap-1.5 text-dim hover:text-default cursor-pointer"><span class="text-blue-400">📁</span><span>recipes/</span></div>
+              <div class="pl-4 space-y-0.5">
+                <div class="px-2 py-1 flex items-center gap-1.5 text-dim hover:text-default cursor-pointer"><span>📄</span><span class="mono">bme280-quickstart.yml</span></div>
+                <!-- CURRENT FILE — author new entry -->
+                <div class="px-2 py-1 flex items-center gap-1.5 bg-primary/10 border-l-2 border-primary text-default rounded-r">
+                  <span class="text-accent">●</span>
+                  <span class="mono truncate">new-entry.yml</span>
+                  <span class="h-1.5 w-1.5 rounded-full bg-accent ml-auto" aria-label="Unsaved"></span>
+                </div>
+              </div>
+              <div class="px-2 py-1 flex items-center gap-1.5 text-dim hover:text-default cursor-pointer"><span class="text-blue-400">📁</span><span>errors/</span></div>
+              <div class="pl-4 space-y-0.5">
+                <div class="px-2 py-1 flex items-center gap-1.5 text-dim hover:text-default cursor-pointer"><span>📄</span><span class="mono">i2c-empty.yml</span></div>
+                <div class="px-2 py-1 flex items-center gap-1.5 text-dim hover:text-default cursor-pointer"><span>📄</span><span class="mono">wifi-timeout.yml</span></div>
+              </div>
+            </div>
+            <div class="px-2 py-1 flex items-center gap-1.5 text-dim hover:text-default cursor-pointer"><span class="text-blue-400">📁</span><span>src/</span></div>
+            <div class="px-2 py-1 flex items-center gap-1.5 text-dim hover:text-default cursor-pointer"><span class="text-blue-400">📁</span><span>tests/</span></div>
+            <div class="px-2 py-1 flex items-center gap-1.5 text-dim hover:text-default cursor-pointer"><span>📄</span><span class="mono">tinkr.toml</span></div>
+            <div class="px-2 py-1 flex items-center gap-1.5 text-dim hover:text-default cursor-pointer"><span>📄</span><span class="mono">README.md</span></div>
+          </div>
+        </div>
+        <!-- tree footer -->
+        <div class="border-t border-default p-2 text-[10px] mono text-muted">
+          <div class="flex items-center justify-between"><span>4 new this week</span><span class="text-primary">+ add</span></div>
+        </div>
+      </aside>
+
+      <!-- ============ MAIN PANE ============ -->
+      <main class="flex flex-col bg-bg min-w-0" aria-label="KB author editor">
+
+        <!-- TOP: breadcrumb + type segmented + status -->
+        <div class="border-b border-default bg-surface-2 px-4 h-11 flex items-center gap-3">
+          <nav class="text-[12px] mono flex items-center gap-1.5 text-dim" aria-label="Breadcrumb">
+            <span class="text-muted">knowledge</span>
+            <span class="text-muted">/</span>
+            <span class="text-default">author new entry</span>
+          </nav>
+          <div class="ml-2"><span class="px-1.5 py-0.5 text-[10px] mono rounded bg-accent/10 text-accent border border-accent/30">draft</span></div>
+          <div class="flex-1"></div>
+          <!-- Entry type segmented control -->
+          <div class="seg" role="tablist" aria-label="Entry type">
+            <button role="tab" aria-selected="true" aria-pressed="true" class="text-accent">
+              <span class="text-[10px] px-1 py-0.5 rounded chip-recipe">recipe</span>
+              <span>active</span>
+            </button>
+            <button role="tab" aria-selected="false" aria-pressed="false">
+              <span class="text-[10px] px-1 py-0.5 rounded chip-fact">fact</span>
+            </button>
+            <button role="tab" aria-selected="false" aria-pressed="false">
+              <span class="text-[10px] px-1 py-0.5 rounded chip-error">error</span>
+            </button>
+            <button role="tab" aria-selected="false" aria-pressed="false">
+              <span class="text-[10px] px-1 py-0.5 rounded chip-pattern">pattern</span>
+            </button>
+          </div>
+          <div class="ml-2 text-[10px] mono text-muted hidden md:block">auto-saving 2s ago</div>
+        </div>
+
+        <!-- CONTENT GRID: 60/40 -->
+        <div class="flex-1 grid grid-cols-[60%_40%] min-h-0">
+
+          <!-- ============ FORM (60%) ============ -->
+          <section class="border-r border-default overflow-y-auto scrollbar" aria-label="Entry form">
+
+            <div class="px-6 py-5 space-y-7">
+
+              <!-- ───── Title block ───── -->
+              <div>
+                <label class="block text-[11px] mono uppercase tracking-wider text-muted mb-1.5" for="kb-title">title <span class="text-accent">*</span></label>
+                <input id="kb-title" class="w-full bg-surface-2 border border-default rounded-md text-[15px] py-2.5 px-3 focus:border-primary/60 focus:outline-none" value="ESP32-S3 — flash MicroPython over USB-CDC" aria-describedby="kb-title-help">
+                <div id="kb-title-help" class="text-[11px] text-muted mt-1.5">Use a verb-led title. The reader should know what they'll achieve. Slug: <code class="mono text-primary">esp32s3-flash-micropython-usb-cdc</code></div>
+              </div>
+
+              <!-- ───── chips / boards ───── -->
+              <div>
+                <label class="block text-[11px] mono uppercase tracking-wider text-muted mb-1.5">chips &amp; boards</label>
+                <div class="bg-surface-2 border border-default rounded-md p-2 flex flex-wrap gap-1.5">
+                  <span class="px-2 py-1 text-[11px] mono rounded bg-cyan-500/10 text-cyan-300 border border-cyan-500/30 flex items-center gap-1.5">ESP32-S3 <button class="text-cyan-300/70 hover:text-cyan-200" aria-label="Remove ESP32-S3">×</button></span>
+                  <span class="px-2 py-1 text-[11px] mono rounded bg-cyan-500/10 text-cyan-300 border border-cyan-500/30 flex items-center gap-1.5">ESP32-S3-DevKitC-1 <button class="text-cyan-300/70 hover:text-cyan-200" aria-label="Remove ESP32-S3-DevKitC-1">×</button></span>
+                  <span class="px-2 py-1 text-[11px] mono rounded bg-cyan-500/10 text-cyan-300 border border-cyan-500/30 flex items-center gap-1.5">M5Stack-CoreS3 <button class="text-cyan-300/70 hover:text-cyan-200" aria-label="Remove M5Stack-CoreS3">×</button></span>
+                  <span class="px-2 py-1 text-[11px] mono rounded bg-cyan-500/10 text-cyan-300 border border-cyan-500/30 flex items-center gap-1.5">ESP32-C3 <button class="text-cyan-300/70 hover:text-cyan-200" aria-label="Remove ESP32-C3">×</button></span>
+                  <button class="chip-input-add" aria-label="Add a chip or board">
+                    <span>+ add chip or board</span>
+                  </button>
+                </div>
+                <div class="mt-1.5 flex flex-wrap gap-1.5 text-[10px] mono">
+                  <span class="text-muted">suggested:</span>
+                  <button class="px-1.5 py-0.5 rounded border border-default hover:border-primary/40 text-dim">ESP32</button>
+                  <button class="px-1.5 py-0.5 rounded border border-default hover:border-primary/40 text-dim">ESP32-S2</button>
+                  <button class="px-1.5 py-0.5 rounded border border-default hover:border-primary/40 text-dim">RP2040</button>
+                  <button class="px-1.5 py-0.5 rounded border border-default hover:border-primary/40 text-dim">nRF52840</button>
+                </div>
+              </div>
+
+              <!-- ───── difficulty / time / firmware ───── -->
+              <div class="grid grid-cols-3 gap-4">
+                <div>
+                  <label class="block text-[11px] mono uppercase tracking-wider text-muted mb-1.5">difficulty</label>
+                  <div class="flex bg-surface-2 border border-default rounded-md p-0.5 text-[12px]">
+                    <label class="flex-1 text-center px-2 py-1.5 rounded cursor-pointer hover:text-default text-dim">
+                      <input type="radio" name="diff" class="sr-only">
+                      Beginner
+                    </label>
+                    <label class="flex-1 text-center px-2 py-1.5 rounded cursor-pointer bg-surface-3 text-default shadow-sm">
+                      <input type="radio" name="diff" class="sr-only" checked>
+                      Intermediate
+                    </label>
+                    <label class="flex-1 text-center px-2 py-1.5 rounded cursor-pointer hover:text-default text-dim">
+                      <input type="radio" name="diff" class="sr-only">
+                      Advanced
+                    </label>
+                  </div>
+                </div>
+                <div>
+                  <label class="block text-[11px] mono uppercase tracking-wider text-muted mb-1.5" for="kb-time">est. time</label>
+                  <div class="flex items-center bg-surface-2 border border-default rounded-md">
+                    <input id="kb-time" type="number" min="1" max="240" class="w-full bg-transparent text-sm px-3 py-1.5 focus:outline-none mono" value="5">
+                    <span class="text-[11px] text-muted pr-3">min</span>
+                  </div>
+                </div>
+                <div>
+                  <label class="block text-[11px] mono uppercase tracking-wider text-muted mb-1.5" for="kb-fw">min firmware</label>
+                  <div class="flex items-center bg-surface-2 border border-default rounded-md">
+                    <span class="text-[11px] text-muted pl-3">mp ≥</span>
+                    <input id="kb-fw" class="w-full bg-transparent text-sm px-2 py-1.5 focus:outline-none mono" value="1.20">
+                  </div>
+                </div>
+              </div>
+
+              <!-- ───── tags ───── -->
+              <div>
+                <label class="block text-[11px] mono uppercase tracking-wider text-muted mb-1.5">tags</label>
+                <div class="bg-surface-2 border border-default rounded-md p-2 flex flex-wrap gap-1.5">
+                  <span class="px-2 py-1 text-[11px] mono rounded bg-primary/10 text-primary border border-primary/30 flex items-center gap-1.5">#usb-cdc <button class="text-primary/70 hover:text-primary" aria-label="Remove tag usb-cdc">×</button></span>
+                  <span class="px-2 py-1 text-[11px] mono rounded bg-primary/10 text-primary border border-primary/30 flex items-center gap-1.5">#flash <button class="text-primary/70 hover:text-primary" aria-label="Remove tag flash">×</button></span>
+                  <span class="px-2 py-1 text-[11px] mono rounded bg-primary/10 text-primary border border-primary/30 flex items-center gap-1.5">#micropython <button class="text-primary/70 hover:text-primary" aria-label="Remove tag micropython">×</button></span>
+                  <span class="px-2 py-1 text-[11px] mono rounded bg-primary/10 text-primary border border-primary/30 flex items-center gap-1.5">#first-flash <button class="text-primary/70 hover:text-primary" aria-label="Remove tag first-flash">×</button></span>
+                  <input class="bg-transparent text-[12px] px-1.5 py-1 focus:outline-none min-w-[120px] flex-1" placeholder="add tag + ⏎">
+                </div>
+              </div>
+
+              <!-- ───── description (rich text) ───── -->
+              <div>
+                <div class="flex items-center justify-between mb-1.5">
+                  <label class="block text-[11px] mono uppercase tracking-wider text-muted">description <span class="text-accent">*</span></label>
+                  <span class="text-[10px] mono text-muted">markdown</span>
+                </div>
+                <!-- toolbar -->
+                <div class="flex items-center gap-0.5 bg-surface-2 border border-default border-b-0 rounded-t-md px-1 py-1">
+                  <button class="rt-btn" aria-label="Bold" aria-pressed="false"><span class="font-bold">B</span></button>
+                  <button class="rt-btn" aria-label="Italic" aria-pressed="false"><span class="italic">I</span></button>
+                  <button class="rt-btn" aria-label="Inline code" aria-pressed="true"><span class="mono text-[12px]">{}</span></button>
+                  <span class="w-px h-5 bg-default mx-0.5"></span>
+                  <button class="rt-btn" aria-label="Link"><span class="mono text-[12px]">🔗</span></button>
+                  <span class="w-px h-5 bg-default mx-0.5"></span>
+                  <button class="rt-btn" aria-label="Bulleted list">•</button>
+                  <button class="rt-btn" aria-label="Numbered list">1.</button>
+                  <span class="w-px h-5 bg-default mx-0.5"></span>
+                  <button class="rt-btn" aria-label="Heading 2"><span class="font-semibold">H2</span></button>
+                  <button class="rt-btn" aria-label="Heading 3"><span class="font-semibold">H3</span></button>
+                  <span class="w-px h-5 bg-default mx-0.5"></span>
+                  <button class="rt-btn" aria-label="Quote">❝</button>
+                  <span class="flex-1"></span>
+                  <span class="text-[10px] mono text-muted px-2">312 chars</span>
+                </div>
+                <div contenteditable="true" role="textbox" aria-label="Description" aria-multiline="true" data-placeholder="One paragraph: what this is, who it's for, and what they'll have when they're done." class="rt-editor bg-surface-2 border border-default rounded-b-md text-[13.5px] px-3 py-2.5 leading-relaxed">
+                  Flash <strong>MicroPython</strong> firmware onto a stock <code>ESP32-S3</code> using the built-in <em>USB-CDC</em> bootloader — no external programmer, no esptool.py dance, just the USB-C cable. This is the first thing to run on a new board. Takes ~90 seconds, leaves you at the REPL.
+                </div>
+                <div class="mt-1 text-[10px] mono text-muted flex items-center gap-3">
+                  <span><span class="text-green">✓</span> 1 paragraph · 312 chars</span>
+                  <span><span class="text-green">✓</span> mentions chips</span>
+                  <span><span class="text-amber">!</span> no linked references yet</span>
+                </div>
+              </div>
+
+              <!-- ───── steps ───── -->
+              <div>
+                <div class="flex items-center justify-between mb-2">
+                  <div>
+                    <label class="block text-[11px] mono uppercase tracking-wider text-muted">steps <span class="text-accent">*</span></label>
+                    <div class="text-[11px] text-muted mt-0.5">The reusable unit. Each step is what the reader will copy + run.</div>
+                  </div>
+                  <button class="text-[12px] mono px-2.5 py-1.5 rounded-md bg-primary/10 text-primary border border-primary/30 hover:bg-primary/20 cursor-pointer">+ add step</button>
+                </div>
+
+                <!-- STEP 1 -->
+                <article class="bg-surface border border-default rounded-lg p-4 mb-3 step-active" aria-label="Step 1">
+                  <header class="flex items-center justify-between mb-2">
+                    <div class="flex items-center gap-2.5">
+                      <div class="step-num">1</div>
+                      <span class="text-[10px] mono uppercase text-muted tracking-wider">currently editing</span>
+                    </div>
+                    <div class="flex items-center gap-1 text-muted">
+                      <button class="rt-btn" aria-label="Move step up">↑</button>
+                      <button class="rt-btn" aria-label="Move step down">↓</button>
+                      <button class="rt-btn" aria-label="Duplicate step">⎘</button>
+                      <button class="rt-btn" aria-label="Delete step">🗑</button>
+                    </div>
+                  </header>
+                  <label class="block text-[11px] mono uppercase tracking-wider text-muted mb-1">description</label>
+                  <div contenteditable="true" role="textbox" aria-multiline="true" data-placeholder="What the reader does in this step…" class="rt-editor bg-surface-2 border border-default rounded-md text-[13.5px] px-3 py-2 mb-2.5">
+                    Hold <code>BOOT</code>, tap <code>RESET</code>, release <code>BOOT</code> after 1s. The board enumerates as a USB-CDC device on <code>/dev/cu.usbmodem*</code> (mac) or <code>COMx</code> (win).
+                  </div>
+                  <label class="block text-[11px] mono uppercase tracking-wider text-muted mb-1">code <span class="text-muted normal-case">— esptool dump, micropython.org firmware URL, etc.</span></label>
+                  <pre class="shiki mono text-[12px] leading-relaxed p-3 rounded-md border border-default overflow-x-auto scrollbar" aria-label="Code block, shell"><span class="tk-cm"># wait for the USB-CDC port to appear (≈ 2s after the BOOT tap)</span>
+<span class="tk-va">$</span> <span class="tk-fn">ls</span> <span class="tk-st">/dev/cu.usbmodem*</span>
+<span class="tk-st">/dev/cu.usbmodem14101</span>
+
+<span class="tk-cm"># grab the latest stable v1.24.1 firmware for ESP32-S3</span>
+<span class="tk-va">$</span> <span class="tk-fn">tinkr</span> <span class="tk-cl">firmware</span> <span class="tk-fn">fetch</span> <span class="tk-st">esp32s3</span> <span class="tk-pu">--version</span> <span class="tk-st">1.24.1</span></pre>
+                  <div class="flex items-center gap-2 mt-2">
+                    <button class="text-[11px] mono px-2 py-1 rounded border border-default hover:border-primary/40 text-dim">+ add code block</button>
+                    <button class="text-[11px] mono px-2 py-1 rounded border border-default hover:border-primary/40 text-dim">+ add verification</button>
+                  </div>
+                  <label class="block text-[11px] mono uppercase tracking-wider text-muted mb-1 mt-3">verify — how the reader knows it worked</label>
+                  <div contenteditable="true" role="textbox" aria-multiline="true" class="rt-editor bg-surface-2 border border-default rounded-md text-[13.5px] px-3 py-2">
+                    The port appears in <code>ls /dev/cu.usbmodem*</code>. The LED on GPIO48 tinkrs 3× on reset.
+                  </div>
+                </article>
+
+                <!-- STEP 2 -->
+                <article class="bg-surface border border-default rounded-lg p-4 mb-3" aria-label="Step 2">
+                  <header class="flex items-center justify-between mb-2">
+                    <div class="flex items-center gap-2.5">
+                      <div class="step-num">2</div>
+                      <span class="text-[10px] mono uppercase text-muted tracking-wider">step 2 of 4</span>
+                    </div>
+                    <div class="flex items-center gap-1 text-muted">
+                      <button class="rt-btn" aria-label="Move step up">↑</button>
+                      <button class="rt-btn" aria-label="Move step down">↓</button>
+                      <button class="rt-btn" aria-label="Duplicate step">⎘</button>
+                      <button class="rt-btn" aria-label="Delete step">🗑</button>
+                    </div>
+                  </header>
+                  <label class="block text-[11px] mono uppercase tracking-wider text-muted mb-1">description</label>
+                  <div contenteditable="true" role="textbox" aria-multiline="true" data-placeholder="What the reader does in this step…" class="rt-editor bg-surface-2 border border-default rounded-md text-[13.5px] px-3 py-2 mb-2.5">
+                    Run <code>tinkr project deploy</code> — it detects the USB-CDC port, calls esptool.py under the hood, erases flash, writes the firmware, and verifies the checksum. No interactive prompts.
+                  </div>
+                  <pre class="shiki mono text-[12px] leading-relaxed p-3 rounded-md border border-default overflow-x-auto scrollbar" aria-label="Code block, shell"><span class="tk-va">$</span> <span class="tk-fn">tinkr</span> <span class="tk-cl">project</span> <span class="tk-fn">deploy</span>
+<span class="tk-pu">[</span><span class="tk-nu">1</span><span class="tk-pu">/</span><span class="tk-nu">5</span><span class="tk-pu">]</span> <span class="tk-fn">detect</span>  <span class="tk-st">/dev/cu.usbmodem14101 · esp32s3 · usb-cdc</span> · <span class="tk-fn">done</span> <span class="tk-nu">0.4s</span>
+<span class="tk-pu">[</span><span class="tk-nu">2</span><span class="tk-pu">/</span><span class="tk-nu">5</span><span class="tk-pu">]</span> <span class="tk-fn">erase</span>   <span class="tk-st">8 MB flash</span>                                · <span class="tk-fn">done</span> <span class="tk-nu">1.2s</span>
+<span class="tk-pu">[</span><span class="tk-nu">3</span><span class="tk-pu">/</span><span class="tk-nu">5</span><span class="tk-pu">]</span> <span class="tk-fn">write</span>    <span class="tk-st">ESP32_GENERIC_S3-20240602-v1.24.1.bin · 1.4 MB</span> · <span class="tk-fn">done</span> <span class="tk-nu">3.1s</span>
+<span class="tk-pu">[</span><span class="tk-nu">4</span><span class="tk-pu">/</span><span class="tk-nu">5</span><span class="tk-pu">]</span> <span class="tk-fn">verify</span>   <span class="tk-st">sha256 match</span>                              · <span class="tk-fn">done</span> <span class="tk-nu">1.8s</span>
+<span class="tk-pu">[</span><span class="tk-nu">5</span><span class="tk-pu">/</span><span class="tk-nu">5</span><span class="tk-pu">]</span> <span class="tk-fn">reset</span>    <span class="tk-st">reboot to MicroPython REPL</span>                · <span class="tk-fn">done</span> <span class="tk-nu">0.3s</span></pre>
+                </article>
+
+                <!-- STEP 3 (collapsed preview) -->
+                <article class="bg-surface border border-default rounded-lg p-4 mb-3" aria-label="Step 3">
+                  <header class="flex items-center justify-between mb-1.5">
+                    <div class="flex items-center gap-2.5">
+                      <div class="step-num">3</div>
+                      <span class="text-[12px]">Confirm the REPL</span>
+                      <span class="text-[10px] mono text-muted">+ code · + verify</span>
+                    </div>
+                    <div class="flex items-center gap-1 text-muted">
+                      <button class="rt-btn" aria-label="Expand step 3">▾</button>
+                    </div>
+                  </header>
+                </article>
+
+                <!-- STEP 4 (collapsed preview) -->
+                <article class="bg-surface border border-default rounded-lg p-4 mb-3" aria-label="Step 4">
+                  <header class="flex items-center justify-between mb-1.5">
+                    <div class="flex items-center gap-2.5">
+                      <div class="step-num">4</div>
+                      <span class="text-[12px]">Save a hello world to flash</span>
+                      <span class="text-[10px] mono text-muted">+ code · + verify</span>
+                    </div>
+                    <div class="flex items-center gap-1 text-muted">
+                      <button class="rt-btn" aria-label="Expand step 4">▾</button>
+                    </div>
+                  </header>
+                </article>
+
+                <button class="w-full text-[12px] mono py-2.5 rounded-md border border-dashed border-strong hover:border-primary/40 text-dim hover:text-primary cursor-pointer">+ add step</button>
+              </div>
+
+              <!-- ───── related + attribution ───── -->
+              <div class="grid grid-cols-2 gap-4">
+                <div>
+                  <label class="block text-[11px] mono uppercase tracking-wider text-muted mb-1.5" for="kb-related">related entries</label>
+                  <input id="kb-related" class="w-full bg-surface-2 border border-default rounded-md text-sm py-2 px-3 focus:border-primary/60 focus:outline-none mono" value="i2c-empty.yml, bme280-quickstart.yml, usb-cdc-troubleshooting.yml">
+                </div>
+                <div>
+                  <label class="block text-[11px] mono uppercase tracking-wider text-muted mb-1.5" for="kb-author">author / attribution</label>
+                  <input id="kb-author" class="w-full bg-surface-2 border border-default rounded-md text-sm py-2 px-3 focus:border-primary/60 focus:outline-none mono" value="@ronie · +2 contributors">
+                </div>
+              </div>
+
+              <div>
+                <label class="block text-[11px] mono uppercase tracking-wider text-muted mb-1.5" for="kb-src">sources</label>
+                <textarea id="kb-src" rows="3" class="w-full bg-surface-2 border border-default rounded-md text-[12.5px] mono px-3 py-2 focus:border-primary/60 focus:outline-none">- "tinkr-esp32/knowledge/datasheets/esp32-s3-datasheet.pdf §2.3"
+- "micropython.org/download/esp32/s3 — release notes 1.24.1"
+- "espressif/esp-idf issue #9842 — USB-CDC reset sequence"</textarea>
+              </div>
+
+              <!-- spacer to clear the sticky footer -->
+              <div class="h-4"></div>
+            </div>
+          </section>
+
+          <!-- ============ LIVE PREVIEW (40%) ============ -->
+          <section class="bg-surface-2 overflow-y-auto scrollbar flex flex-col" aria-label="Live preview">
+            <div class="px-4 py-2.5 border-b border-default bg-bg flex items-center gap-2 sticky top-0 z-10">
+              <div class="text-[11px] mono uppercase tracking-wider text-dim">live preview</div>
+              <span class="text-[10px] mono text-muted">· how users will see this entry</span>
+              <span class="flex-1"></span>
+              <button class="text-[10px] mono px-2 py-1 rounded border border-default hover:border-primary/40 text-dim cursor-pointer" aria-label="Refresh preview">⟳ refresh</button>
+            </div>
+
+            <div class="p-5 space-y-5">
+
+              <!-- Result card preview (looks like one in the search results) -->
+              <div>
+                <div class="text-[10px] mono uppercase text-muted tracking-wider mb-1.5">in the search results</div>
+                <div class="bg-surface border-2 border-primary/40 rounded-lg p-4">
+                  <div class="flex items-center gap-2 flex-wrap">
+                    <span class="px-1.5 py-0.5 text-[10px] mono rounded chip-recipe">recipe</span>
+                    <span class="px-1.5 py-0.5 text-[10px] mono rounded chip-fact">esp32s3</span>
+                    <span class="px-1.5 py-0.5 text-[10px] mono rounded chip-fact">esp32c3</span>
+                    <span class="font-semibold">esp32s3-flash-micropython-usb-cdc</span>
+                    <span class="text-[11px] text-dim">· by @ronie</span>
+                  </div>
+                  <p class="text-[13px] text-dim mt-2">Flash <strong class="text-default">MicroPython</strong> firmware onto a stock <code class="mono">ESP32-S3</code> using the built-in <em>USB-CDC</em> bootloader — no external programmer…</p>
+                  <div class="flex items-center gap-3 mt-3 text-[11px] text-muted">
+                    <span class="text-green">★ 0.92 score</span>
+                    <span>·</span>
+                    <span>0 confirmations (just published)</span>
+                    <span>·</span>
+                    <span>intermediate · 5 min</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Entry detail preview -->
+              <div>
+                <div class="text-[10px] mono uppercase text-muted tracking-wider mb-1.5">entry detail page</div>
+                <article class="bg-surface border border-default rounded-lg p-5">
+                  <div class="flex items-start gap-2 flex-wrap">
+                    <span class="px-1.5 py-0.5 text-[10px] mono rounded chip-recipe">recipe</span>
+                    <span class="px-1.5 py-0.5 text-[10px] mono rounded chip-fact">esp32s3</span>
+                    <span class="px-1.5 py-0.5 text-[10px] mono rounded chip-fact">esp32c3</span>
+                    <span class="px-1.5 py-0.5 text-[10px] mono rounded chip-fact">usb-cdc</span>
+                    <h2 class="text-xl font-semibold flex-1 min-w-0">ESP32-S3 — flash MicroPython over USB-CDC</h2>
+                    <span class="text-[11px] text-amber">⏳ pending review</span>
+                  </div>
+
+                  <p class="text-default mt-3 text-[13.5px] leading-relaxed">Flash <strong>MicroPython</strong> firmware onto a stock <code class="mono">ESP32-S3</code> using the built-in <em>USB-CDC</em> bootloader — no external programmer, no esptool.py dance, just the USB-C cable. This is the first thing to run on a new board. Takes ~90 seconds, leaves you at the REPL.</p>
+
+                  <div class="flex flex-wrap items-center gap-2 mt-3 text-[10px] mono">
+                    <span class="px-2 py-1 rounded bg-surface-2 border border-default text-dim">difficulty: intermediate</span>
+                    <span class="px-2 py-1 rounded bg-surface-2 border border-default text-dim">est. time: 5 min</span>
+                    <span class="px-2 py-1 rounded bg-surface-2 border border-default text-dim">firmware: mp ≥ 1.20</span>
+                  </div>
+
+                  <!-- preview tabs -->
+                  <div class="mt-4 border-b border-default flex items-center gap-1 text-[12px]">
+                    <button class="px-3 py-1.5 text-primary border-b-2 border-primary -mb-px" aria-current="true">rendered</button>
+                    <button class="px-3 py-1.5 text-dim">YAML</button>
+                    <button class="px-3 py-1.5 text-dim">JSON</button>
+                    <button class="px-3 py-1.5 text-dim">related · 3</button>
+                  </div>
+
+                  <div class="mt-4 md">
+                    <h3>Step 1 — Enter bootloader mode</h3>
+                    <p>Hold <code>BOOT</code>, tap <code>RESET</code>, release <code>BOOT</code> after 1s. The board enumerates as a USB-CDC device on <code>/dev/cu.usbmodem*</code>.</p>
+                    <pre class="shiki mono text-[11.5px] leading-relaxed p-3 rounded-md border border-default overflow-x-auto"><span class="tk-cm"># wait for the USB-CDC port to appear</span>
+<span class="tk-va">$</span> <span class="tk-fn">ls</span> <span class="tk-st">/dev/cu.usbmodem*</span>
+<span class="tk-st">/dev/cu.usbmodem14101</span></pre>
+                    <p class="text-[11px] text-green mt-1"><span class="text-green">✓</span> verify: the port appears in <code class="mono">ls /dev/cu.usbmodem*</code>. The LED on GPIO48 tinkrs 3× on reset.</p>
+
+                    <h3>Step 2 — Deploy the firmware</h3>
+                    <p>Run <code>tinkr project deploy</code> — it detects the USB-CDC port, calls esptool.py under the hood, erases flash, writes the firmware, and verifies the checksum.</p>
+                    <pre class="shiki mono text-[11.5px] leading-relaxed p-3 rounded-md border border-default overflow-x-auto"><span class="tk-va">$</span> <span class="tk-fn">tinkr</span> <span class="tk-cl">project</span> <span class="tk-fn">deploy</span>
+<span class="tk-pu">[</span><span class="tk-nu">1</span><span class="tk-pu">/</span><span class="tk-nu">5</span><span class="tk-pu">]</span> <span class="tk-fn">detect</span>  <span class="tk-st">/dev/cu.usbmodem14101 · esp32s3</span> · <span class="tk-fn">done</span> <span class="tk-nu">0.4s</span>
+<span class="tk-pu">[</span><span class="tk-nu">2</span><span class="tk-pu">/</span><span class="tk-nu">5</span><span class="tk-pu">]</span> <span class="tk-fn">erase</span>   <span class="tk-st">8 MB flash</span>                  · <span class="tk-fn">done</span> <span class="tk-nu">1.2s</span>
+<span class="tk-pu">[</span><span class="tk-nu">3</span><span class="tk-pu">/</span><span class="tk-nu">5</span><span class="tk-pu">]</span> <span class="tk-fn">write</span>    <span class="tk-st">ESP32_GENERIC_S3-…v1.24.1.bin</span> · <span class="tk-fn">done</span> <span class="tk-nu">3.1s</span></pre>
+                    <p class="text-[11px] text-dim mt-1">+ 2 more steps (collapsed) — click to expand on the live page.</p>
+                  </div>
+
+                  <!-- action row -->
+                  <div class="flex flex-wrap items-center gap-2 mt-4">
+                    <button class="px-2.5 py-1.5 text-[12px] rounded-md bg-primary text-bg font-medium">copy entry</button>
+                    <button class="px-2.5 py-1.5 text-[12px] rounded-md border border-default hover:border-primary/40">fork &amp; edit</button>
+                    <button class="px-2.5 py-1.5 text-[12px] rounded-md border border-default hover:border-primary/40">open in editor</button>
+                    <span class="flex-1"></span>
+                    <button class="px-2.5 py-1.5 text-[12px] rounded-md text-red border border-red/30 hover:bg-red/10">⚑ report</button>
+                  </div>
+                </article>
+              </div>
+
+              <!-- Phase indicator (draft → review → published) -->
+              <div class="bg-surface border border-default rounded-lg p-4">
+                <div class="text-[10px] mono uppercase text-muted tracking-wider mb-2">publication flow</div>
+                <ol class="flex items-center gap-2 text-[11px] mono">
+                  <li class="flex items-center gap-1.5 px-2 py-1 rounded bg-accent/10 text-accent border border-accent/30">
+                    <span class="h-1.5 w-1.5 rounded-full bg-accent"></span>
+                    draft · current
+                  </li>
+                  <li class="text-muted">→</li>
+                  <li class="flex items-center gap-1.5 px-2 py-1 rounded border border-default text-dim">
+                    <span class="h-1.5 w-1.5 rounded-full bg-default"></span>
+                    review · 0/2 reviewers
+                  </li>
+                  <li class="text-muted">→</li>
+                  <li class="flex items-center gap-1.5 px-2 py-1 rounded border border-default text-dim">
+                    <span class="h-1.5 w-1.5 rounded-full bg-default"></span>
+                    published · <span class="text-muted">next knowledge drop</span>
+                  </li>
+                </ol>
+              </div>
+
+              <!-- Pre-publish checklist -->
+              <div class="bg-surface border border-default rounded-lg p-4">
+                <div class="text-[10px] mono uppercase text-muted tracking-wider mb-2">pre-publish checklist</div>
+                <ul class="space-y-1 text-[12px]">
+                  <li class="flex items-center gap-2"><span class="text-green">✓</span> title + slug valid</li>
+                  <li class="flex items-center gap-2"><span class="text-green">✓</span> at least 1 chip tagged</li>
+                  <li class="flex items-center gap-2"><span class="text-green">✓</span> difficulty + time set</li>
+                  <li class="flex items-center gap-2"><span class="text-green">✓</span> description ≥ 80 chars</li>
+                  <li class="flex items-center gap-2"><span class="text-green">✓</span> 3+ steps with at least 1 having a code block</li>
+                  <li class="flex items-center gap-2"><span class="text-amber">!</span> no external sources cited — <span class="text-dim">add at least 1 for a verified</span></li>
+                </ul>
+              </div>
+
+            </div>
+          </section>
+        </div>
+
+        <!-- ============ FOOTER (sticky) ============ -->
+        <footer class="border-t border-default bg-surface-2 px-4 h-14 flex items-center gap-3" aria-label="Save actions">
+          <div class="text-[11px] mono text-muted flex items-center gap-2">
+            <span class="h-1.5 w-1.5 rounded-full bg-amber"></span>
+            unsaved changes · 3 edits since last save
+          </div>
+          <span class="flex-1"></span>
+          <button class="text-[12px] mono px-3 py-2 rounded-md border border-default hover:border-primary/40 text-dim hover:text-default cursor-pointer">↩ discard</button>
+          <button class="text-[12px] mono px-3 py-2 rounded-md border border-default hover:border-primary/40 text-default cursor-pointer">save as draft</button>
+          <button class="text-[12px] mono px-3 py-2 rounded-md bg-primary/10 text-primary border border-primary/30 hover:bg-primary/20 cursor-pointer">save + submit for review</button>
+          <button class="text-[12px] mono px-3 py-2 rounded-md bg-accent text-bg font-semibold hover:opacity-90 cursor-pointer" title="Ship to the live KB">● save + publish</button>
+        </footer>
+      </main>
+    </div>
+  </div>
+
+  <!-- ====================== FOOTNOTES ====================== -->
+  <section class="grid md:grid-cols-3 gap-4 text-[12px]">
+    <div class="bg-surface border border-default rounded-lg p-4">
+      <div class="text-[10px] mono uppercase text-primary tracking-wider mb-1">stage 1 · draft</div>
+      <p class="text-dim">Saved locally + pushed to your fork. Not visible to anyone but you and your reviewers. Auto-saves every 5s.</p>
+    </div>
+    <div class="bg-surface border border-default rounded-lg p-4">
+      <div class="text-[10px] mono uppercase text-primary tracking-wider mb-1">stage 2 · review</div>
+      <p class="text-dim">Posted to the KB review queue. 2 community reviewers must approve. SLA: 3 days. You can iterate based on feedback.</p>
+    </div>
+    <div class="bg-surface border border-default rounded-lg p-4">
+      <div class="text-[10px] mono uppercase text-accent tracking-wider mb-1">stage 3 · published</div>
+      <p class="text-dim">Lives in the public KB. Scores 0.0 at first, climbs as the community uses it. 5+ confirmations → verified badge. <strong class="text-default">"Stays true to contributions."</strong></p>
+    </div>
+  </section>
+
+  <footer class="border-t border-default bg-bg">
+    <div class="max-w-7xl mx-auto px-6 py-6 flex items-center justify-between text-xs mono text-muted">
+      <div>tinkr 0.5.0 mockup 08 — knowledge base author · tinker on</div>
+      <div class="flex items-center gap-4">
+        <a href="05-kb-viewer.html" class="hover:text-primary">← kb viewer</a>
+        <a href="README.md" class="hover:text-primary">mockup index →</a>
+      </div>
+    </div>
+  </footer>
+</div>
+
+</body>
+</html>

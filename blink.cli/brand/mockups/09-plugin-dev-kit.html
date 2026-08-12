@@ -1,0 +1,725 @@
+<!doctype html>
+<!--
+  Tinkr Mockup 09 — Plugin Dev Kit (v1.5 surface)
+  ======================================================================
+  Design notes:
+
+  1. VS CODE FEEL WITH BLINK CHROME. This is the developer's home
+     for writing a plugin. The file tree, the tabs, the line
+     numbers, the status bar — all familiar from a code editor.
+     The Tinkr bits: the build/test panel on the right, the
+     "Submit to marketplace" CTA, the manifest as a first-class
+     tab.
+
+  2. THE MANIFEST IS A FIRST-CLASS TAB. tinkr.plugin.toml is the
+     plugin's identity. It sits at the front of the tab strip
+     with a "●" active marker and unsaved indicator. This
+     reinforces that you can't ship a plugin without a manifest,
+     and makes editing the manifest feel native to the editor.
+
+  3. UNSAVED DOTS ARE PER-TAB. The amber dot on each tab means
+     "this file has unsaved edits." Cmd-S saves all dirty tabs.
+     The "●" on the active tab in the tree means "this is the
+     file you have open" — different signal, different glyph,
+     no overlap with the dirty dot.
+
+  4. BUILD & TEST PANEL IS A CO-PILOT, NOT A LOG DUMP. The
+     three sections — validate, test, build & install — each
+     collapse to a summary line and expand to the full output.
+     "Submit to marketplace" is amber, disabled until
+     (manifest valid) AND (all tests pass).
+
+  5. TOML, PYTHON, AND JSON HAVE DIFFERENT HIGHLIGHTING. The
+     existing CLI mockup defines a tiny CSS-only highlighter
+     (.kw / .fn / .str / .num / .cm). We extend it with
+     .tk-tk-key, .tk-tk-section, .tk-tk-num for TOML, and
+     reuse the same classes for Python and JSON. No JS.
+
+  6. THE BOTTOM STRIP IS THE PROJECT'S VITAL SIGNS. Plugin
+     name, version, last commit hash, build status. Nothing
+     else. 28px, same as the Tauri shell status bar.
+
+  7. TABS HAVE A CLOSE BUTTON. Standard editor muscle memory.
+     A dot to the left of the filename signals unsaved; the
+     "●" only on the active tab signals "this is the file
+     you have open right now."
+  ======================================================================
+-->
+<html lang="en" class="dark">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Tinkr — Plugin Dev Kit (weather-station)</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0B1120;
+    --surface: #0F172A;
+    --surface-2: #111827;
+    --surface-3: #0A0F1C;
+    --border: #1F2937;
+    --border-strong: #334155;
+    --text: #E2E8F0;
+    --text-dim: #94A3B8;
+    --text-muted: #64748B;
+    --primary: #5EEAD4;
+    --primary-deep: #06B6D4;
+    --accent: #FB923C;
+    --secondary: #A78BFA;
+    --green: #10B981;
+    --red: #EF4444;
+    --blue: #60A5FA;
+  }
+  html.light {
+    --bg: #FAFAFA;
+    --surface: #FFFFFF;
+    --surface-2: #F1F5F9;
+    --surface-3: #E2E8F0;
+    --border: #E2E8F0;
+    --border-strong: #CBD5E1;
+    --text: #0F172A;
+    --text-dim: #475569;
+    --text-muted: #64748B;
+  }
+  html, body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', system-ui, sans-serif;
+  }
+  .mono { font-family: 'JetBrains Mono', ui-monospace, monospace; }
+  .bg-bg { background-color: var(--bg); }
+  .bg-surface { background-color: var(--surface); }
+  .bg-surface-2 { background-color: var(--surface-2); }
+  .bg-surface-3 { background-color: var(--surface-3); }
+  .border-default { border-color: var(--border); }
+  .border-strong { border-color: var(--border-strong); }
+  .text-default { color: var(--text); }
+  .text-dim { color: var(--text-dim); }
+  .text-muted { color: var(--text-muted); }
+  .text-primary { color: var(--primary); }
+  .text-accent { color: var(--accent); }
+  .text-secondary { color: var(--secondary); }
+  .text-green { color: var(--green); }
+  .text-red { color: var(--red); }
+  .text-blue { color: var(--blue); }
+  .bg-primary\/10 { background-color: rgba(94, 234, 212, 0.10); }
+  .bg-primary\/20 { background-color: rgba(94, 234, 212, 0.20); }
+  .bg-accent\/10 { background-color: rgba(251, 146, 60, 0.10); }
+  .bg-accent\/20 { background-color: rgba(251, 146, 60, 0.20); }
+  .bg-secondary\/10 { background-color: rgba(167, 139, 250, 0.10); }
+  .bg-green\/10 { background-color: rgba(16, 185, 129, 0.10); }
+  .bg-red\/10 { background-color: rgba(239, 68, 68, 0.10); }
+  .border-primary\/30 { border-color: rgba(94, 234, 212, 0.30); }
+  .border-primary\/40 { border-color: rgba(94, 234, 212, 0.40); }
+  .border-accent\/30 { border-color: rgba(251, 146, 60, 0.30); }
+  .border-secondary\/30 { border-color: rgba(167, 139, 250, 0.30); }
+  .border-red\/30 { border-color: rgba(239, 68, 68, 0.30); }
+  .border-green\/30 { border-color: rgba(16, 185, 129, 0.30); }
+  /* syntax tokens — shared with mockup 02 */
+  .tk-kw { color: #A78BFA; }
+  .tk-fn { color: #5EEAD4; }
+  .tk-st { color: #FBBF24; }
+  .tk-nu { color: #F472B6; }
+  .tk-cm { color: #64748B; font-style: italic; }
+  .tk-va { color: #E2E8F0; }
+  .tk-pu { color: #94A3B8; }
+  .tk-cl { color: #FB923C; }
+  /* TOML */
+  .tk-tk-section { color: #FB923C; font-weight: 600; }
+  .tk-tk-key { color: #5EEAD4; }
+  .tk-tk-num { color: #F472B6; }
+  /* JSON */
+  .tk-json-key { color: #5EEAD4; }
+  .tk-json-str { color: #FBBF24; }
+  .tk-json-num { color: #F472B6; }
+  .tk-json-bool { color: #A78BFA; font-weight: 600; }
+  .tk-json-null { color: #94A3B8; font-style: italic; }
+  html.light .tk-kw  { color: #7C3AED; }
+  html.light .tk-fn  { color: #0E7490; }
+  html.light .tk-st  { color: #B45309; }
+  html.light .tk-nu  { color: #BE185D; }
+  html.light .tk-va  { color: #0F172A; }
+  html.light .tk-tk-section { color: #C2410C; }
+  html.light .tk-tk-key { color: #0F766E; }
+  html.light .tk-json-key { color: #0F766E; }
+  html.light .tk-json-str { color: #B45309; }
+  html.light .tk-json-num { color: #BE185D; }
+  html.light .tk-json-bool { color: #6D28D9; }
+  /* Mac window */
+  .mac-chrome {
+    background: linear-gradient(180deg, #1E293B 0%, #0F172A 100%);
+  }
+  html.light .mac-chrome {
+    background: linear-gradient(180deg, #E2E8F0 0%, #CBD5E1 100%);
+  }
+  .scrollbar::-webkit-scrollbar { width: 8px; height: 8px; }
+  .scrollbar::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+  .scrollbar::-webkit-scrollbar-track { background: transparent; }
+  /* editor line highlight */
+  .line-hi { background: rgba(94, 234, 212, 0.06); }
+  html.light .line-hi { background: rgba(13, 148, 136, 0.08); }
+  /* tab states */
+  .tab {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 0 10px;
+    height: 36px;
+    border-right: 1px solid var(--border);
+    color: var(--text-dim);
+    font-size: 12.5px;
+    cursor: pointer;
+    position: relative;
+  }
+  .tab:hover { background: var(--surface-2); color: var(--text); }
+  .tab[aria-selected="true"] {
+    background: var(--bg);
+    color: var(--text);
+    box-shadow: inset 0 -2px 0 0 var(--primary);
+  }
+  .tab .close {
+    width: 16px; height: 16px;
+    display: inline-flex; align-items: center; justify-content: center;
+    border-radius: 3px;
+    color: var(--text-muted);
+    opacity: 0;
+  }
+  .tab:hover .close { opacity: 1; }
+  .tab .close:hover { background: var(--surface-3); color: var(--text); }
+  /* tree rows */
+  .tree-row {
+    display: flex; align-items: center; gap: 6px;
+    padding: 3px 12px 3px 8px;
+    font-size: 12.5px;
+    color: var(--text-dim);
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .tree-row:hover { background: var(--surface); color: var(--text); }
+  .tree-row.active { background: var(--surface); color: var(--text); box-shadow: inset 2px 0 0 var(--primary); }
+  .tree-row .name { overflow: hidden; text-overflow: ellipsis; }
+  .tree-row .name.mono { font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 12px; }
+  /* focus rings */
+  *:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; border-radius: 4px; }
+  /* build panel sections */
+  .build-section summary {
+    list-style: none;
+    cursor: pointer;
+  }
+  .build-section summary::-webkit-details-marker { display: none; }
+  .build-section[open] summary .chev { transform: rotate(90deg); }
+  .chev { transition: transform .15s ease; display: inline-block; }
+  /* progress bar */
+  .progress {
+    height: 4px;
+    background: var(--surface-3);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .progress > div {
+    height: 100%;
+    background: var(--primary);
+  }
+  /* tool icon */
+  .ic { width: 14px; height: 14px; flex-shrink: 0; }
+</style>
+</head>
+<body class="min-h-screen">
+
+<!-- Page wrapper -->
+<div class="max-w-[1500px] mx-auto px-6 py-8 space-y-6">
+
+  <!-- Top doc header -->
+  <header class="flex items-center justify-between flex-wrap gap-4">
+    <div>
+      <div class="text-xs mono uppercase tracking-widest text-primary">v1.5 surface · plugin dev kit</div>
+      <h1 class="text-3xl md:text-4xl font-semibold tracking-tight mt-2">Ship a plugin. <span class="text-primary">In an afternoon.</span></h1>
+      <p class="text-dim mt-3 max-w-2xl">The developer's workspace: a familiar three-pane editor (tree / tabs / build), with a manifest as a first-class tab, a live test panel on the right, and a "Submit to marketplace" CTA when the lights are green. <span class="text-default">Tinker on.</span></p>
+    </div>
+    <div class="flex items-center gap-2">
+      <a href="03-marketplace.html" class="text-xs mono px-3 py-1.5 rounded-md bg-surface-2 border border-default hover:border-primary/40">← marketplace</a>
+      <a href="08-kb-editor.html" class="text-xs mono px-3 py-1.5 rounded-md bg-surface-2 border border-default hover:border-primary/40">kb author →</a>
+    </div>
+  </header>
+
+  <!-- ====================== THE IDE WINDOW ====================== -->
+  <div class="rounded-xl overflow-hidden border border-default">
+
+    <!-- Title bar -->
+    <div class="mac-chrome border-b border-default px-4 h-9 flex items-center gap-3 select-none" role="banner" aria-label="Window title bar">
+      <div class="flex items-center gap-1.5" role="group" aria-label="Window controls">
+        <button class="h-3 w-3 rounded-full bg-red-500 hover:bg-red-400 cursor-pointer" aria-label="Close window"></button>
+        <button class="h-3 w-3 rounded-full bg-amber-400 hover:bg-amber-300 cursor-pointer" aria-label="Minimize window"></button>
+        <button class="h-3 w-3 rounded-full bg-emerald-500 hover:bg-emerald-400 cursor-pointer" aria-label="Maximize window"></button>
+      </div>
+      <div class="flex-1 text-center text-[11px] mono text-dim">
+        <span class="text-default">tinkr-esp32-weather-station</span> · <span class="text-primary">⎇</span> <span class="text-default">feat/bme280-driver</span> · <span class="text-muted">plugin dev kit</span>
+      </div>
+      <div class="flex items-center gap-2 text-[11px] mono text-muted">
+        <button onclick="document.documentElement.classList.toggle('light')" class="px-2 py-0.5 rounded hover:bg-surface-2 cursor-pointer" aria-label="Toggle light/dark theme" title="Toggle theme (⌘⇧L)">
+          <span class="dark:hidden">☀ light</span>
+          <span class="hidden dark:inline">◐ dark</span>
+        </button>
+        <span>⌘P palette</span>
+      </div>
+    </div>
+
+    <!-- ====================== MAIN LAYOUT ====================== -->
+    <div class="grid grid-cols-[220px_1fr_360px] h-[820px] bg-bg">
+
+      <!-- ============ LEFT: project tree ============ -->
+      <aside class="border-r border-default bg-surface-2 flex flex-col min-w-0" aria-label="Project tree">
+        <div class="px-3 h-9 flex items-center justify-between border-b border-default text-[11px] mono uppercase tracking-wider text-dim">
+          <span>explorer</span>
+          <div class="flex items-center gap-1.5">
+            <button class="text-primary hover:opacity-80 cursor-pointer" aria-label="New file">＋</button>
+            <button class="text-primary hover:opacity-80 cursor-pointer" aria-label="Refresh tree">⟳</button>
+          </div>
+        </div>
+        <div class="px-2 py-1 border-b border-default">
+          <input class="w-full bg-bg border border-default rounded-md text-[11.5px] px-2 py-1 placeholder:text-muted focus:outline-none focus:border-primary/60" placeholder="Search files… (⌘P)" aria-label="Filter files">
+        </div>
+        <div class="flex-1 overflow-y-auto scrollbar py-1">
+
+          <!-- root -->
+          <div class="tree-row" style="padding-left:8px">
+            <svg class="ic text-muted" viewBox="0 0 20 20" fill="currentColor"><path d="M5.23 7.21a.75.75 0 011.06.02L10 11.06l3.71-3.83a.75.75 0 111.08 1.04l-4.25 4.39a.75.75 0 01-1.08 0L5.21 8.27a.75.75 0 01.02-1.06z"/></svg>
+            <svg class="ic text-blue-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 7l9-4 9 4-9 4-9-4z"/><path d="M3 12l9 4 9-4"/><path d="M3 17l9 4 9-4"/></svg>
+            <span class="name">tinkr-esp32-weather-station</span>
+          </div>
+
+          <!-- MANIFEST — active + open -->
+          <div class="tree-row active" style="padding-left:24px">
+            <span class="text-accent" aria-label="Active file">●</span>
+            <svg class="ic text-accent" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="15" y2="17"/></svg>
+            <span class="name mono">tinkr.plugin.toml</span>
+            <span class="h-1.5 w-1.5 rounded-full bg-accent ml-auto" aria-label="Unsaved changes"></span>
+          </div>
+
+          <!-- adapters/ -->
+          <div class="tree-row" style="padding-left:24px">
+            <svg class="ic text-muted" viewBox="0 0 20 20" fill="currentColor"><path d="M5.23 7.21a.75.75 0 011.06.02L10 11.06l3.71-3.83a.75.75 0 111.08 1.04l-4.25 4.39a.75.75 0 01-1.08 0L5.21 8.27a.75.75 0 01.02-1.06z"/></svg>
+            <svg class="ic text-blue-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 7l9-4 9 4-9 4-9-4z"/></svg>
+            <span class="name">adapters</span>
+            <span class="text-[10px] mono text-muted ml-auto">3</span>
+          </div>
+          <div class="tree-row" style="padding-left:48px">
+            <svg class="ic text-secondary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            <span class="name mono">bme280.py</span>
+          </div>
+          <div class="tree-row" style="padding-left:48px">
+            <svg class="ic text-secondary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            <span class="name mono">esp32_i2c.py</span>
+          </div>
+          <div class="tree-row" style="padding-left:48px">
+            <svg class="ic text-secondary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            <span class="name mono">wifi.py</span>
+          </div>
+
+          <!-- cli/ -->
+          <div class="tree-row" style="padding-left:24px">
+            <svg class="ic text-muted" viewBox="0 0 20 20" fill="currentColor"><path d="M5.23 7.21a.75.75 0 011.06.02L10 11.06l3.71-3.83a.75.75 0 111.08 1.04l-4.25 4.39a.75.75 0 01-1.08 0L5.21 8.27a.75.75 0 01.02-1.06z"/></svg>
+            <svg class="ic text-blue-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 7l9-4 9 4-9 4-9-4z"/></svg>
+            <span class="name">cli</span>
+            <span class="text-[10px] mono text-muted ml-auto">2</span>
+          </div>
+          <div class="tree-row" style="padding-left:48px">
+            <svg class="ic text-blue-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            <span class="name mono">tinkr_weather_deploy.py</span>
+            <span class="h-1.5 w-1.5 rounded-full bg-accent ml-auto" aria-label="Unsaved changes"></span>
+          </div>
+          <div class="tree-row" style="padding-left:48px">
+            <svg class="ic text-secondary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            <span class="name mono">__init__.py</span>
+          </div>
+
+          <!-- examples/ -->
+          <div class="tree-row" style="padding-left:24px">
+            <svg class="ic text-muted" viewBox="0 0 20 20" fill="currentColor"><path d="M5.23 7.21a.75.75 0 011.06.02L10 11.06l3.71-3.83a.75.75 0 111.08 1.04l-4.25 4.39a.75.75 0 01-1.08 0L5.21 8.27a.75.75 0 01.02-1.06z"/></svg>
+            <svg class="ic text-blue-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 7l9-4 9 4-9 4-9-4z"/></svg>
+            <span class="name">examples</span>
+            <span class="text-[10px] mono text-muted ml-auto">1</span>
+          </div>
+          <div class="tree-row" style="padding-left:48px">
+            <svg class="ic text-blue-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            <span class="name mono">weather-station/main.py</span>
+          </div>
+
+          <!-- knowledge/ -->
+          <div class="tree-row" style="padding-left:24px">
+            <svg class="ic text-muted" viewBox="0 0 20 20" fill="currentColor"><path d="M5.23 7.21a.75.75 0 011.06.02L10 11.06l3.71-3.83a.75.75 0 111.08 1.04l-4.25 4.39a.75.75 0 01-1.08 0L5.21 8.27a.75.75 0 01.02-1.06z"/></svg>
+            <svg class="ic text-blue-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 7l9-4 9 4-9 4-9-4z"/></svg>
+            <span class="name">knowledge</span>
+          </div>
+          <div class="tree-row" style="padding-left:48px">
+            <svg class="ic text-blue-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 7l9-4 9 4-9 4-9-4z"/></svg>
+            <span class="name">chips</span>
+          </div>
+          <div class="tree-row" style="padding-left:72px">
+            <svg class="ic text-secondary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            <span class="name mono">esp32.json</span>
+            <span class="h-1.5 w-1.5 rounded-full bg-accent ml-auto" aria-label="Unsaved changes"></span>
+          </div>
+
+          <!-- tests/ -->
+          <div class="tree-row" style="padding-left:24px">
+            <svg class="ic text-muted" viewBox="0 0 20 20" fill="currentColor"><path d="M5.23 7.21a.75.75 0 011.06.02L10 11.06l3.71-3.83a.75.75 0 111.08 1.04l-4.25 4.39a.75.75 0 01-1.08 0L5.21 8.27a.75.75 0 01.02-1.06z"/></svg>
+            <svg class="ic text-blue-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 7l9-4 9 4-9 4-9-4z"/></svg>
+            <span class="name">tests</span>
+          </div>
+          <div class="tree-row" style="padding-left:48px">
+            <svg class="ic text-secondary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            <span class="name mono">test_smoke.py</span>
+          </div>
+
+          <!-- top-level docs -->
+          <div class="tree-row" style="padding-left:24px">
+            <svg class="ic text-blue-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+            <span class="name mono">CHANGELOG.md</span>
+          </div>
+          <div class="tree-row" style="padding-left:24px">
+            <svg class="ic text-blue-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+            <span class="name mono">README.md</span>
+          </div>
+        </div>
+        <div class="border-t border-default p-2 text-[10px] mono text-muted flex items-center justify-between">
+          <span>9 files · 142 KB</span>
+          <span class="text-primary cursor-pointer">+ new</span>
+        </div>
+      </aside>
+
+      <!-- ============ CENTER: editor ============ -->
+      <main class="flex flex-col bg-bg min-w-0" aria-label="Code editor">
+
+        <!-- TAB BAR -->
+        <div class="h-9 bg-surface-2 border-b border-default flex items-end overflow-x-auto scrollbar" role="tablist" aria-label="Open files">
+          <!-- Tab 1 — active -->
+          <div class="tab" role="tab" aria-selected="true">
+            <svg class="ic text-accent" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="15" y2="17"/></svg>
+            <span>tinkr.plugin.toml</span>
+            <span class="h-1.5 w-1.5 rounded-full bg-accent" aria-label="Unsaved changes"></span>
+            <button class="close" aria-label="Close tinkr.plugin.toml">×</button>
+          </div>
+          <!-- Tab 2 -->
+          <div class="tab" role="tab" aria-selected="false">
+            <svg class="ic text-blue-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            <span>cli/tinkr_weather_deploy.py</span>
+            <span class="h-1.5 w-1.5 rounded-full bg-accent" aria-label="Unsaved changes"></span>
+            <button class="close" aria-label="Close cli/tinkr_weather_deploy.py">×</button>
+          </div>
+          <!-- Tab 3 -->
+          <div class="tab" role="tab" aria-selected="false">
+            <svg class="ic text-secondary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            <span>knowledge/chips/esp32.json</span>
+            <span class="h-1.5 w-1.5 rounded-full bg-accent" aria-label="Unsaved changes"></span>
+            <button class="close" aria-label="Close knowledge/chips/esp32.json">×</button>
+          </div>
+          <div class="flex-1"></div>
+          <div class="px-3 text-[11px] mono text-muted">3 dirty · ⌘K</div>
+        </div>
+
+        <!-- BREADCRUMB / outline -->
+        <div class="h-7 border-b border-default bg-bg flex items-center px-3 text-[11px] mono text-dim gap-1.5">
+          <span class="text-muted">tinkr-esp32-weather-station</span>
+          <span class="text-muted">/</span>
+          <span class="text-default">tinkr.plugin.toml</span>
+          <span class="ml-2 text-secondary">[plugin]</span>
+          <span class="text-dim">·</span>
+          <span class="text-secondary">[adapter]</span>
+          <span class="text-dim">·</span>
+          <span class="text-secondary">[cli]</span>
+          <span class="flex-1"></span>
+          <span class="text-muted">utf-8 · LF · toml · ln 14 / col 22</span>
+        </div>
+
+        <!-- EDITOR BODY -->
+        <div class="flex-1 overflow-auto scrollbar flex">
+          <!-- line numbers -->
+          <div class="select-none text-right text-[12px] mono text-muted px-3 py-3 leading-[20px] bg-bg border-r border-default" aria-hidden="true">
+            <div>1</div><div>2</div><div>3</div><div>4</div><div>5</div><div>6</div><div>7</div><div>8</div><div>9</div><div>10</div><div>11</div><div>12</div><div>13</div><div class="line-hi text-primary">14</div><div>15</div><div>16</div><div>17</div><div>18</div><div>19</div><div>20</div><div>21</div><div>22</div><div>23</div><div>24</div><div>25</div><div>26</div><div>27</div><div>28</div><div>29</div><div>30</div><div>31</div><div>32</div><div>33</div><div>34</div><div>35</div><div>36</div><div>37</div><div>38</div><div>39</div><div>40</div><div>41</div><div>42</div>
+          </div>
+          <!-- code (TOML) -->
+          <pre class="flex-1 text-[12.5px] mono leading-[20px] py-3 px-3 whitespace-pre" aria-label="tinkr.plugin.toml source"><span class="tk-cm"># tinkr plugin manifest — the identity of a plugin</span>
+<span class="tk-cm"># validate with: tinkr plugin validate</span>
+
+<span class="tk-tk-section">[plugin]</span>
+<span class="tk-tk-key">name</span>         = <span class="tk-st">"tinkr-esp32-weather-station"</span>
+<span class="tk-tk-key">version</span>      = <span class="tk-st">"0.2.0-dev"</span>
+<span class="tk-tk-key">description</span>  = <span class="tk-st">"ESP32 weather station: BME280 over I²C, MQTT over Wi-Fi, with deep-sleep."</span>
+<span class="tk-tk-key">authors</span>      = <span class="tk-pu">[</span> <span class="tk-st">"ronie &lt;ronie@tinkr.build&gt;"</span>, <span class="tk-st">"ada &lt;ada@tinkr.build&gt;"</span> <span class="tk-pu">]</span>
+<span class="tk-tk-key">license</span>      = <span class="tk-st">"MIT"</span>
+<span class="tk-tk-key">homepage</span>     = <span class="tk-st">"https://github.com/tinkr-ecosystem/tinkr-esp32-weather-station"</span>
+<span class="tk-tk-key">min_tinkr</span>    = <span class="tk-st">"0.5.0"</span>
+<span class="tk-tk-key">tags</span>         = <span class="tk-pu">[</span> <span class="tk-st">"esp32"</span>, <span class="tk-st">"weather"</span>, <span class="tk-st">"bme280"</span>, <span class="tk-st">"mqtt"</span> <span class="tk-pu">]</span>
+
+<span class="tk-tk-section">[adapter]</span>
+<span class="tk-tk-key">chip</span>         = <span class="tk-st">"esp32s3"</span>
+<span class="tk-tk-key">firmware</span>     = <span class="tk-st">"micropython"</span>
+<span class="tk-tk-key">min_firmware</span> = <span class="tk-st">"1.20"</span>
+<span class="tk-tk-key">modules</span>      = <span class="tk-pu">[</span> <span class="tk-st">"adapters.bme280"</span>, <span class="tk-st">"adapters.esp32_i2c"</span>, <span class="tk-st">"adapters.wifi"</span> <span class="tk-pu">]</span>
+<span class="tk-tk-key">clock</span>        = <span class="tk-tk-num">240_000_000</span>
+<span class="tk-tk-key">flash_kb</span>     = <span class="tk-tk-num">8192</span>
+
+<span class="tk-tk-section">[cli]</span>
+<span class="tk-tk-key">entry</span>        = <span class="tk-st">"cli.tinkr_weather_deploy:cli"</span>
+<span class="tk-tk-key">commands</span>     = <span class="tk-pu">[</span> <span class="tk-st">"deploy"</span>, <span class="tk-st">"monitor"</span>, <span class="tk-st">"simulate"</span> <span class="tk-pu">]</span>
+<span class="tk-tk-key">flags</span>        = <span class="tk-pu">[</span> <span class="tk-st">"--device"</span>, <span class="tk-st">"--port"</span>, <span class="tk-st">"--dry-run"</span> <span class="tk-pu">]</span>
+
+<span class="tk-tk-section">[knowledge]</span>
+<span class="tk-tk-key">chips</span>        = <span class="tk-pu">[</span> <span class="tk-st">"knowledge/chips/esp32.json"</span> <span class="tk-pu">]</span>
+<span class="tk-tk-key">recipes</span>      = <span class="tk-pu">[</span> <span class="tk-st">"knowledge/recipes/bme280-quickstart.yml"</span> <span class="tk-pu">]</span>
+<span class="tk-tk-key">errors</span>       = <span class="tk-pu">[</span> <span class="tk-st">"knowledge/errors/i2c-empty.yml"</span> <span class="tk-pu">]</span>
+
+<span class="tk-tk-section">[marketplace]</span>
+<span class="tk-tk-key">category</span>     = <span class="tk-st">"sensors"</span>
+<span class="tk-tk-key">free</span>         = <span class="tk-va">true</span>
+<span class="tk-tk-key">pricing</span>      = <span class="tk-st">"free"</span>
+<span class="tk-tk-key">verified</span>     = <span class="tk-va">false</span>
+<span class="tk-tk-key">min_tinkr</span>    = <span class="tk-st">"0.5.0"</span></pre>
+        </div>
+
+        <!-- ============= BOTTOM STRIP — info bar ============= -->
+        <div class="h-7 border-t border-default bg-surface-2 flex items-center px-3 text-[11px] mono text-dim gap-3" aria-label="Plugin info bar">
+          <span class="flex items-center gap-1.5">
+            <span class="h-1.5 w-1.5 rounded-full bg-accent"></span>
+            <span class="text-default font-semibold">tinkr-esp32-weather-station</span>
+            <span class="text-dim">·</span>
+            <span>v0.2.0-dev</span>
+          </span>
+          <span class="text-dim">·</span>
+          <span><span class="text-primary">⎇</span> feat/bme280-driver</span>
+          <span class="text-dim">·</span>
+          <span>commit <span class="text-default">a3f9c2e</span></span>
+          <span class="text-dim">·</span>
+          <span>3 dirty files</span>
+          <span class="flex-1"></span>
+          <span class="text-amber">● 3 unsaved</span>
+          <span class="text-dim">·</span>
+          <span class="text-muted">build: idle</span>
+          <span class="text-dim">·</span>
+          <span class="text-muted">tests: 0/6</span>
+          <span class="text-dim">·</span>
+          <span class="text-muted">utf-8 · LF</span>
+        </div>
+      </main>
+
+      <!-- ============ RIGHT: build & test ============ -->
+      <aside class="border-l border-default bg-surface-2 flex flex-col min-w-0" aria-label="Build and test panel">
+
+        <div class="px-3 h-9 flex items-center justify-between border-b border-default text-[11px] mono uppercase tracking-wider text-dim">
+          <span class="flex items-center gap-1.5">
+            <svg class="ic text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+            build &amp; test
+          </span>
+          <div class="flex items-center gap-1.5">
+            <button class="px-1.5 py-0.5 rounded hover:bg-surface text-muted hover:text-default cursor-pointer" aria-label="Run all" title="Run all (⌘⇧B)">▷ all</button>
+            <button class="px-1.5 py-0.5 rounded hover:bg-surface text-muted hover:text-default cursor-pointer" aria-label="Collapse panel" title="Collapse">⊟</button>
+          </div>
+        </div>
+
+        <div class="flex-1 overflow-y-auto scrollbar">
+
+          <!-- ─── validate ─── -->
+          <details class="build-section border-b border-default" open>
+            <summary class="px-3 py-2.5 flex items-center gap-2 hover:bg-surface cursor-pointer">
+              <span class="chev text-muted">▸</span>
+              <span class="text-[12px] font-medium">validate manifest</span>
+              <span class="ml-auto flex items-center gap-1.5 text-[10px] mono">
+                <span class="h-1.5 w-1.5 rounded-full bg-green"></span>
+                <span class="text-green">8 / 8</span>
+              </span>
+            </summary>
+            <div class="px-3 pb-3 space-y-0.5 text-[11.5px] mono">
+              <div class="flex items-center gap-2"><span class="text-green">✓</span> <span>[plugin] name</span> <span class="text-dim">· matches kebab-case</span></div>
+              <div class="flex items-center gap-2"><span class="text-green">✓</span> <span>[plugin] version</span> <span class="text-dim">· semver 0.2.0-dev</span></div>
+              <div class="flex items-center gap-2"><span class="text-green">✓</span> <span>[plugin] license</span> <span class="text-dim">· MIT (OSI-approved)</span></div>
+              <div class="flex items-center gap-2"><span class="text-green">✓</span> <span>[plugin] min_tinkr</span> <span class="text-dim">· 0.5.0 ≥ installed 0.5.0</span></div>
+              <div class="flex items-center gap-2"><span class="text-green">✓</span> <span>[adapter] chip exists</span> <span class="text-dim">· esp32s3 ∈ known</span></div>
+              <div class="flex items-center gap-2"><span class="text-green">✓</span> <span>[adapter] firmware</span> <span class="text-dim">· micropython ≥ 1.20 ok</span></div>
+              <div class="flex items-center gap-2"><span class="text-green">✓</span> <span>[cli] entry point</span> <span class="text-dim">· cli.tinkr_weather_deploy:cli importable</span></div>
+              <div class="flex items-center gap-2"><span class="text-green">✓</span> <span>[knowledge] paths resolve</span> <span class="text-dim">· 3 / 3 found on disk</span></div>
+              <div class="mt-2 pt-2 border-t border-default flex items-center justify-between text-[10px]">
+                <span class="text-muted">last run · 2 min ago · <span class="text-dim">0.21s</span></span>
+                <button class="text-primary hover:underline">re-run</button>
+              </div>
+            </div>
+          </details>
+
+          <!-- ─── tests ─── -->
+          <details class="build-section border-b border-default" open>
+            <summary class="px-3 py-2.5 flex items-center gap-2 hover:bg-surface cursor-pointer">
+              <span class="chev text-muted">▸</span>
+              <span class="text-[12px] font-medium">run tests</span>
+              <span class="ml-auto flex items-center gap-1.5 text-[10px] mono">
+                <span class="h-1.5 w-1.5 rounded-full bg-green"></span>
+                <span class="text-green">6 / 6</span>
+              </span>
+            </summary>
+            <div class="px-3 pb-3 space-y-0.5 text-[11.5px] mono">
+              <div class="flex items-center gap-2">
+                <span class="text-green">✓</span>
+                <span class="flex-1 truncate">test_manifest_parses</span>
+                <span class="text-muted">0.04s</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <span class="text-green">✓</span>
+                <span class="flex-1 truncate">test_bme280_address_probe</span>
+                <span class="text-muted">0.12s</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <span class="text-green">✓</span>
+                <span class="flex-1 truncate">test_wifi_connect_timeout</span>
+                <span class="text-muted">1.04s</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <span class="text-green">✓</span>
+                <span class="flex-1 truncate">test_deploy_dry_run</span>
+                <span class="text-muted">0.18s</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <span class="text-green">✓</span>
+                <span class="flex-1 truncate">test_kb_entries_resolve</span>
+                <span class="text-muted">0.06s</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <span class="text-green">✓</span>
+                <span class="flex-1 truncate">test_port_scan_idempotent</span>
+                <span class="text-muted">0.31s</span>
+              </div>
+              <div class="mt-2 pt-2 border-t border-default flex items-center justify-between text-[10px]">
+                <span class="text-muted">last run · just now · <span class="text-dim">1.75s total · 6 passed, 0 failed, 0 skipped</span></span>
+                <button class="text-primary hover:underline">re-run</button>
+              </div>
+            </div>
+          </details>
+
+          <!-- ─── build & install ─── -->
+          <details class="build-section" open>
+            <summary class="px-3 py-2.5 flex items-center gap-2 hover:bg-surface cursor-pointer">
+              <span class="chev text-muted">▸</span>
+              <span class="text-[12px] font-medium">build &amp; install</span>
+              <span class="ml-auto flex items-center gap-1.5 text-[10px] mono">
+                <span class="h-1.5 w-1.5 rounded-full bg-green"></span>
+                <span class="text-green">ready</span>
+              </span>
+            </summary>
+            <div class="px-3 pb-3 space-y-3 text-[11.5px] mono">
+              <div>
+                <div class="flex items-center justify-between text-muted">
+                  <span>build artifact</span>
+                  <span class="text-default">weather-station.uf2 · 312 KB</span>
+                </div>
+                <div class="mt-1.5 flex items-center gap-2">
+                  <span class="text-green">✓</span>
+                  <span class="text-dim">sdist built · 0.4s</span>
+                </div>
+                <div class="flex items-center gap-2">
+                  <span class="text-green">✓</span>
+                  <span class="text-dim">wheel built · 0.3s</span>
+                </div>
+                <div class="flex items-center gap-2">
+                  <span class="text-green">✓</span>
+                  <span class="text-dim">manifest embedded · &lt;1s</span>
+                </div>
+              </div>
+
+              <div>
+                <div class="flex items-center justify-between text-muted">
+                  <span>install locally</span>
+                  <span class="text-default">~/.tinkr/plugins/…</span>
+                </div>
+                <div class="mt-1.5 flex items-center gap-2">
+                  <span class="text-green">✓</span>
+                  <span class="text-dim">linked to venv</span>
+                </div>
+                <div class="flex items-center gap-2">
+                  <span class="text-green">✓</span>
+                  <span class="text-dim">KB entries indexed</span>
+                </div>
+                <div class="flex items-center gap-2">
+                  <span class="text-green">✓</span>
+                  <span class="text-dim">CLI command <span class="text-default">tinkr weather deploy</span> registered</span>
+                </div>
+              </div>
+
+              <!-- progress bar (a pretend ongoing operation) -->
+              <div class="bg-surface-3 border border-default rounded p-2.5">
+                <div class="flex items-center justify-between text-[10px] text-muted">
+                  <span>installing on <span class="text-default">esp32s3-left</span> · USB-CDC</span>
+                  <span class="text-primary">72%</span>
+                </div>
+                <div class="progress mt-1.5"><div style="width:72%"></div></div>
+                <div class="text-[10px] text-dim mt-1.5">writing <span class="text-default">main.py</span> · 1.4 MB / 1.9 MB</div>
+              </div>
+
+              <button class="w-full text-[11.5px] mono py-1.5 rounded border border-default hover:border-primary/40 text-dim hover:text-default cursor-pointer">▷ run full pipeline</button>
+            </div>
+          </details>
+
+        </div>
+
+        <!-- SUBMIT FOOTER -->
+        <div class="border-t border-default p-3 bg-bg">
+          <!-- gate checklist -->
+          <ul class="text-[10.5px] mono space-y-0.5 mb-2.5 text-muted">
+            <li class="flex items-center gap-1.5"><span class="text-green">✓</span> <span>manifest valid</span></li>
+            <li class="flex items-center gap-1.5"><span class="text-green">✓</span> <span>all tests passing</span></li>
+            <li class="flex items-center gap-1.5"><span class="text-green">✓</span> <span>build artifact present</span></li>
+            <li class="flex items-center gap-1.5"><span class="text-amber">!</span> <span>uncommitted changes — push to fork first</span></li>
+          </ul>
+          <button disabled class="w-full text-[12px] mono py-2.5 rounded-md bg-accent/30 text-accent-300/80 cursor-not-allowed flex items-center justify-center gap-2 border border-accent/30" title="push to fork to enable" aria-label="Submit to marketplace (push first)">
+            <span>●</span>
+            <span>submit to marketplace</span>
+          </button>
+          <div class="text-[10px] text-muted text-center mt-1.5 mono">push to fork · 1 click away</div>
+        </div>
+      </aside>
+    </div>
+  </div>
+
+  <!-- ====================== FOOTNOTES ====================== -->
+  <section class="grid md:grid-cols-4 gap-3 text-[12px]">
+    <div class="bg-surface border border-default rounded-lg p-4">
+      <div class="flex items-center justify-between mb-1">
+        <div class="text-[10px] mono uppercase text-primary tracking-wider">manifest</div>
+        <span class="text-[10px] mono text-amber">● dirty</span>
+      </div>
+      <p class="text-dim">Plugin identity. Validated on save. <code class="mono text-default">tinkr plugin validate</code></p>
+    </div>
+    <div class="bg-surface border border-default rounded-lg p-4">
+      <div class="flex items-center justify-between mb-1">
+        <div class="text-[10px] mono uppercase text-primary tracking-wider">adapters</div>
+        <span class="text-[10px] mono text-muted">3 files</span>
+      </div>
+      <p class="text-dim">Chip-specific code. Python 3.11+, imports cleanly on host + device.</p>
+    </div>
+    <div class="bg-surface border border-default rounded-lg p-4">
+      <div class="flex items-center justify-between mb-1">
+        <div class="text-[10px] mono uppercase text-primary tracking-wider">cli</div>
+        <span class="text-[10px] mono text-amber">● dirty</span>
+      </div>
+      <p class="text-dim">Entry point. Click-decorated functions. Surfaces as <code class="mono text-default">tinkr weather &lt;cmd&gt;</code>.</p>
+    </div>
+    <div class="bg-surface border border-default rounded-lg p-4">
+      <div class="flex items-center justify-between mb-1">
+        <div class="text-[10px] mono uppercase text-primary tracking-wider">knowledge</div>
+        <span class="text-[10px] mono text-amber">● dirty</span>
+      </div>
+      <p class="text-dim">Per-chip data + recipes. Indexes into the KB the moment you ship.</p>
+    </div>
+  </section>
+
+  <footer class="border-t border-default bg-bg">
+    <div class="max-w-7xl mx-auto px-6 py-6 flex items-center justify-between text-xs mono text-muted">
+      <div>tinkr 0.5.0 mockup 09 — plugin dev kit · tinker on</div>
+      <div class="flex items-center gap-4">
+        <a href="03-marketplace.html" class="hover:text-primary">← marketplace</a>
+        <a href="README.md" class="hover:text-primary">mockup index →</a>
+      </div>
+    </div>
+  </footer>
+</div>
+
+</body>
+</html>

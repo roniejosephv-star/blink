@@ -1,0 +1,360 @@
+<!doctype html>
+<!--
+  Tinkr Mockup 04 — Documentation Site (v1.0+ surface)
+  ======================================================================
+  Design notes:
+
+  1. THREE-COLUMN DOCS LAYOUT. Left = tree of pages (always visible
+     on desktop, collapsible to top sheet on mobile). Center = rendered
+     markdown. Right = on-page TOC with anchor links. This is the same
+     pattern as Vite, Next.js, Tailwind, Astro — readers expect it.
+
+  2. LIGHT MODE IS THE DEFAULT FOR DOCS. Most engineers read docs in
+     bright environments. Light is the default; dark is opt-in via the
+     same toggle. The brand colors are the same; the only change is
+     luminance.
+
+  3. THE "WHAT'S NEW" BANNER IS A SINGLE ROW, DISMISSIBLE. No modal.
+     No popup. A single row at the top that says "v0.5 is out, here's
+     what changed" with a "dismiss" link.
+
+  4. SEARCH IS PROMINENT. The ⌘K search is the primary navigation
+     for experienced users. It opens a modal overlay with results from
+     docs, KB, and changelog combined.
+
+  5. CALLOUTS, TABLES, CODE BLOCKS. The center column uses the same
+     semantic colors as the rest of the product — note (blue), warn
+     (amber), tip (cyan), success (green), danger (red).
+
+  6. VERSION SELECTOR. v0.5 / v0.4 / v0.3 in the top nav. Each
+     version's docs are versioned, with a "this is v0.5, latest" badge
+     on the latest.
+  ======================================================================
+-->
+<html lang="en" class="light">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Tinkr Docs — Getting started with the `tinkr` CLI</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0B1120;
+    --surface: #0F172A;
+    --surface-2: #111827;
+    --border: #1F2937;
+    --text: #E2E8F0;
+    --text-dim: #94A3B8;
+    --text-muted: #64748B;
+    --cyan: #5EEAD4;
+    --cyan-deep: #06B6D4;
+    --amber: #F59E0B;
+    --green: #10B981;
+    --red: #EF4444;
+    --blue: #60A5FA;
+    --magenta: #C084FC;
+  }
+  html.light {
+    --bg: #FFFFFF;
+    --surface: #FFFFFF;
+    --surface-2: #F8FAFC;
+    --border: #E2E8F0;
+    --text: #0F172A;
+    --text-dim: #475569;
+    --text-muted: #94A3B8;
+  }
+  html, body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', system-ui, sans-serif;
+  }
+  .mono { font-family: 'JetBrains Mono', ui-monospace, monospace; }
+  .display { font-family: 'Space Grotesk', system-ui, sans-serif; }
+  .bg-bg { background-color: var(--bg); }
+  .bg-surface { background-color: var(--surface); }
+  .bg-surface-2 { background-color: var(--surface-2); }
+  .border-default { border-color: var(--border); }
+  .text-default { color: var(--text); }
+  .text-dim { color: var(--text-dim); }
+  .text-muted { color: var(--text-muted); }
+  .text-cyan { color: var(--cyan); }
+  .text-green { color: var(--green); }
+  .text-amber { color: var(--amber); }
+  .text-red { color: var(--red); }
+  .text-blue { color: var(--blue); }
+  .text-magenta { color: var(--magenta); }
+  /* syntax */
+  .kw { color: #C084FC; }
+  .fn { color: #5EEAD4; }
+  .str { color: #FBBF24; }
+  .num { color: #F472B6; }
+  .cmt { color: #64748B; font-style: italic; }
+  .var { color: #E2E8F0; }
+  .punc { color: #94A3B8; }
+  html.light .kw { color: #7C3AED; }
+  html.light .fn { color: #0891B2; }
+  html.light .str { color: #B45309; }
+  html.light .num { color: #BE185D; }
+  html.light .var { color: #0F172A; }
+  html.light .cmt { color: #64748B; }
+  .scrollbar::-webkit-scrollbar { width: 8px; height: 8px; }
+  .scrollbar::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+  .scrollbar::-webkit-scrollbar-track { background: transparent; }
+  .prose h1, .prose h2, .prose h3 { font-family: 'Space Grotesk', sans-serif; font-weight: 600; }
+  .prose h2 { font-size: 1.5rem; margin-top: 2.5rem; margin-bottom: 1rem; letter-spacing: -0.01em; padding-top: 0.5rem; border-top: 1px solid var(--border); }
+  .prose h3 { font-size: 1.15rem; margin-top: 1.5rem; margin-bottom: 0.5rem; }
+  .prose p, .prose li { line-height: 1.7; }
+  .prose a { color: var(--cyan); text-decoration: underline; text-underline-offset: 3px; }
+  .prose code:not(pre code) {
+    background: var(--surface-2); padding: 0.1em 0.35em; border-radius: 4px;
+    font-size: 0.875em; border: 1px solid var(--border);
+  }
+  .prose ul, .prose ol { margin: 0.5rem 0 1rem 1.25rem; }
+  .prose li { margin: 0.25rem 0; }
+  .prose table { width: 100%; font-size: 0.875rem; }
+  .prose th, .prose td { padding: 0.5rem 0.75rem; border-bottom: 1px solid var(--border); text-align: left; }
+  .prose th { font-weight: 600; color: var(--text-dim); }
+  .prose blockquote {
+    border-left: 3px solid var(--cyan); padding: 0.5rem 0 0.5rem 1rem; color: var(--text-dim); font-style: italic;
+  }
+</style>
+</head>
+<body class="min-h-screen">
+
+<!-- "What's new" banner -->
+<div class="bg-cyan/10 border-b border-cyan/30" role="region" aria-label="Latest release note">
+  <div class="max-w-7xl mx-auto px-6 py-2.5 flex items-center gap-3 text-sm">
+    <span class="px-1.5 py-0.5 rounded mono text-[10px] bg-cyan text-bg font-semibold">v0.5</span>
+    <span class="text-default"><span class="font-semibold">What's new in v0.5</span> — the `tinkr repl` TUI ships, the capture layer is local-only, and the 12 existing tools are now the `tinkr-esp32` plugin.</span>
+    <a href="#" class="text-cyan hover:underline ml-2">read the changelog →</a>
+    <span class="flex-1"></span>
+    <button class="text-muted hover:text-default cursor-pointer" aria-label="Dismiss">✕</button>
+  </div>
+</div>
+
+<!-- Top nav -->
+<header class="border-b border-default bg-bg/90 backdrop-blur sticky top-0 z-30">
+  <div class="max-w-[1500px] mx-auto px-6 h-14 flex items-center gap-4">
+    <a href="#" class="flex items-center gap-2">
+      <span class="relative inline-flex h-6 w-6 items-center justify-center">
+        <span class="absolute inset-0 rounded-md bg-cyan-500/20"></span>
+        <span class="relative h-2.5 w-2.5 rounded-sm bg-cyan-400"></span>
+      </span>
+      <span class="display font-semibold tracking-tight">tinkr</span>
+      <span class="text-muted text-xs mono">/ docs</span>
+    </a>
+    <nav class="hidden md:flex items-center gap-1 text-sm ml-2">
+      <a class="px-3 py-1.5 rounded-md text-default font-medium bg-surface-2" href="#" aria-current="page">docs</a>
+      <a class="px-3 py-1.5 rounded-md text-dim hover:text-default hover:bg-surface-2" href="03-marketplace.html">marketplace</a>
+      <a class="px-3 py-1.5 rounded-md text-dim hover:text-default hover:bg-surface-2" href="05-kb-viewer.html">kb</a>
+      <a class="px-3 py-1.5 rounded-md text-dim hover:text-default hover:bg-surface-2" href="#">plugins</a>
+      <a class="px-3 py-1.5 rounded-md text-dim hover:text-default hover:bg-surface-2" href="#">GitHub ↗</a>
+      <a class="px-3 py-1.5 rounded-md text-dim hover:text-default hover:bg-surface-2" href="#">Discord ↗</a>
+    </nav>
+    <div class="flex-1"></div>
+    <div class="relative hidden md:block w-72">
+      <input class="w-full bg-surface-2 border border-default rounded-md text-sm pl-8 pr-3 py-1.5 placeholder:text-muted focus:outline-none focus:border-cyan/60" placeholder="Search docs, KB, changelog…" aria-label="Search">
+      <span class="absolute left-2.5 top-1.5 text-muted text-sm">⌕</span>
+      <span class="absolute right-1.5 top-0.5 text-[10px] mono text-muted border border-default rounded px-1 py-0.5">⌘K</span>
+    </div>
+    <select class="bg-surface-2 border border-default rounded-md text-xs mono px-2 py-1.5 focus:outline-none focus:border-cyan/60" aria-label="Version">
+      <option>v0.5 (latest)</option>
+      <option>v0.4</option>
+      <option>v0.3</option>
+    </select>
+    <button onclick="document.documentElement.classList.toggle('light')" class="text-xs mono px-2.5 py-1.5 rounded-md border border-default hover:border-cyan/40 cursor-pointer" aria-label="Toggle theme">
+      <span class="dark:hidden">☀ light</span>
+      <span class="hidden dark:inline">◐ dark</span>
+    </button>
+  </div>
+</header>
+
+<!-- 3-column layout -->
+<div class="max-w-[1500px] mx-auto px-6 grid grid-cols-[260px_1fr_220px] gap-8 py-8">
+
+  <!-- ============ LEFT: doc tree ============ -->
+  <aside class="sticky top-[6.5rem] self-start max-h-[calc(100vh-7rem)] overflow-y-auto scrollbar" aria-label="Documentation tree">
+    <div class="text-xs mono uppercase text-muted tracking-wider mb-2">getting started</div>
+    <ul class="text-sm space-y-0.5">
+      <li><a class="block px-2 py-1 rounded text-dim hover:text-default hover:bg-surface-2" href="#">Introduction</a></li>
+      <li><a class="block px-2 py-1 rounded bg-cyan/10 text-cyan font-medium" href="#" aria-current="page">Quick start</a></li>
+      <li><a class="block px-2 py-1 rounded text-dim hover:text-default hover:bg-surface-2" href="#">Installation</a></li>
+      <li><a class="block px-2 py-1 rounded text-dim hover:text-default hover:bg-surface-2" href="#">Concepts</a></li>
+    </ul>
+    <div class="text-xs mono uppercase text-muted tracking-wider mt-5 mb-2">the CLI</div>
+    <ul class="text-sm space-y-0.5">
+      <li><a class="block px-2 py-1 rounded text-dim hover:text-default hover:bg-surface-2" href="#"><code class="mono">tinkr init</code></a></li>
+      <li><a class="block px-2 py-1 rounded text-dim hover:text-default hover:bg-surface-2" href="#"><code class="mono">tinkr plugin</code></a></li>
+      <li><a class="block px-2 py-1 rounded text-dim hover:text-default hover:bg-surface-2" href="#"><code class="mono">tinkr device</code></a></li>
+      <li><a class="block px-2 py-1 rounded text-dim hover:text-default hover:bg-surface-2" href="#"><code class="mono">tinkr project</code></a></li>
+      <li><a class="block px-2 py-1 rounded text-dim hover:text-default hover:bg-surface-2" href="#"><code class="mono">tinkr repl</code></a></li>
+      <li><a class="block px-2 py-1 rounded text-dim hover:text-default hover:bg-surface-2" href="#"><code class="mono">tinkr knowledge</code></a></li>
+    </ul>
+    <div class="text-xs mono uppercase text-muted tracking-wider mt-5 mb-2">project memory</div>
+    <ul class="text-sm space-y-0.5">
+      <li><a class="block px-2 py-1 rounded text-dim hover:text-default hover:bg-surface-2" href="#">tinkr.toml</a></li>
+      <li><a class="block px-2 py-1 rounded text-dim hover:text-default hover:bg-surface-2" href="#">.tinkr/lock.toml</a></li>
+      <li><a class="block px-2 py-1 rounded text-dim hover:text-default hover:bg-surface-2" href="#">.tinkr/knowledge/</a></li>
+      <li><a class="block px-2 py-1 rounded text-dim hover:text-default hover:bg-surface-2" href="#">.tinkr/state/</a></li>
+    </ul>
+    <div class="text-xs mono uppercase text-muted tracking-wider mt-5 mb-2">plugins</div>
+    <ul class="text-sm space-y-0.5">
+      <li><a class="block px-2 py-1 rounded text-dim hover:text-default hover:bg-surface-2" href="#">Plugin spec</a></li>
+      <li><a class="block px-2 py-1 rounded text-dim hover:text-default hover:bg-surface-2" href="#">Writing a plugin</a></li>
+      <li><a class="block px-2 py-1 rounded text-dim hover:text-default hover:bg-surface-2" href="#">HAL &amp; capabilities</a></li>
+      <li><a class="block px-2 py-1 rounded text-dim hover:text-default hover:bg-surface-2" href="#">MCP integration</a></li>
+    </ul>
+    <div class="text-xs mono uppercase text-muted tracking-wider mt-5 mb-2">guides</div>
+    <ul class="text-sm space-y-0.5">
+      <li><a class="block px-2 py-1 rounded text-dim hover:text-default hover:bg-surface-2" href="#">Your first deploy</a></li>
+      <li><a class="block px-2 py-1 rounded text-dim hover:text-default hover:bg-surface-2" href="#">Debugging I²C with the agent</a></li>
+      <li><a class="block px-2 py-1 rounded text-dim hover:text-default hover:bg-surface-2" href="#">Sharing a project with students</a></li>
+      <li><a class="block px-2 py-1 rounded text-dim hover:text-default hover:bg-surface-2" href="#">Bringing up a new sensor</a></li>
+    </ul>
+  </aside>
+
+  <!-- ============ CENTER: rendered markdown ============ -->
+  <main class="min-w-0 prose max-w-none">
+    <!-- breadcrumbs -->
+    <div class="text-xs mono text-muted flex items-center gap-1.5 mb-4">
+      <a href="#" class="hover:text-default">docs</a><span>/</span>
+      <a href="#" class="hover:text-default">getting started</a><span>/</span>
+      <span class="text-default">quick start</span>
+      <span class="flex-1"></span>
+      <a href="#" class="text-cyan hover:underline flex items-center gap-1">edit on GitHub ↗</a>
+    </div>
+
+    <h1 class="text-4xl">Quick start</h1>
+    <p class="text-dim text-lg">Get from <code>pip install</code> to a tinkring LED on your desk in under five minutes. The <code>tinkr</code> CLI is the entire v1.0 product; everything else (Tauri shell, marketplace, web UI) is layered on top.</p>
+
+    <div class="mt-6 flex items-center gap-2 text-xs">
+      <span class="text-muted">Reading time:</span>
+      <span class="text-default">4 min</span>
+      <span class="text-muted ml-3">Last updated:</span>
+      <span class="text-default">2 days ago</span>
+      <span class="text-muted ml-3">By:</span>
+      <a href="#" class="text-cyan hover:underline">@ronie</a>
+    </div>
+
+    <h2 id="install">1. Install <a href="#install" class="opacity-0 hover:opacity-100 text-cyan no-underline">#</a></h2>
+    <p>Tinkr runs on macOS, Linux, and Windows. It requires Python 3.11 or later.</p>
+    <pre class="mono text-[12.5px] bg-surface-2 border border-default rounded-md p-3 overflow-x-auto scrollbar"><span class="cmt"># macOS / Linux</span>
+<span class="fn">pipx</span> install tinkr-micropython
+
+<span class="cmt"># Windows (PowerShell)</span>
+<span class="fn">pip</span> install --user tinkr-micropython</pre>
+    <p>If you don't have <code>pipx</code>, the README on GitHub has a one-line <code>curl | bash</code> installer.</p>
+
+    <div class="mt-4 rounded-md border border-blue/30 bg-blue/5 p-4 text-sm">
+      <div class="flex items-center gap-2 font-semibold text-blue"><span>ℹ</span> Note</div>
+      <p class="mt-1 text-dim">Tinkr does not require sudo. All serial-port access on macOS and Linux goes through <code>pyserial</code>, which uses the standard user groups. On Linux, add your user to <code>dialout</code> if you haven't already.</p>
+    </div>
+
+    <h2 id="init">2. Initialize a project <a href="#init" class="opacity-0 hover:opacity-100 text-cyan no-underline">#</a></h2>
+    <p>Create a new directory and let Tinkr scaffold the project memory.</p>
+    <pre class="mono text-[12.5px] bg-surface-2 border border-default rounded-md p-3 overflow-x-auto scrollbar"><span class="fn">mkdir</span> kitchen-sensor <span class="punc">&amp;&amp;</span> <span class="fn">cd</span> kitchen-sensor
+<span class="fn">tinkr</span> init</pre>
+
+    <div class="mt-4 rounded-md border border-cyan/30 bg-cyan/5 p-4 text-sm">
+      <div class="flex items-center gap-2 font-semibold text-cyan"><span>✦</span> Tip</div>
+      <p class="mt-1 text-dim">Run <code>git init</code> right after <code>tinkr init</code>. The project repo is the memory — every change to <code>tinkr.toml</code> and <code>.tinkr/lock.toml</code> should be a commit.</p>
+    </div>
+
+    <h2 id="plugin">3. Add a hardware plugin <a href="#plugin" class="opacity-0 hover:opacity-100 text-cyan no-underline">#</a></h2>
+    <p>Plugins give Tinkr the ability to talk to a specific chip family. The four free plugins ship with the CLI; everything else is opt-in via the marketplace.</p>
+    <pre class="mono text-[12.5px] bg-surface-2 border border-default rounded-md p-3 overflow-x-auto scrollbar"><span class="fn">tinkr</span> plugin add tinkr-esp32
+<span class="cmt"># Resolving tinkr-esp32 from registry... ✓</span>
+<span class="cmt"># Found 1.2.3 (latest stable, MIT, tinkr ≥0.2 &lt;0.4)</span>
+<span class="cmt"># Installed tinkr-esp32@1.2.3.</span></pre>
+
+    <h2 id="device">4. Find your device <a href="#device" class="opacity-0 hover:opacity-100 text-cyan no-underline">#</a></h2>
+    <p>Plug your board in over USB, then:</p>
+    <pre class="mono text-[12.5px] bg-surface-2 border border-default rounded-md p-3 overflow-x-auto scrollbar"><span class="fn">tinkr</span> device scan
+<span class="cmt"># /dev/cu.usbserial-1410  ESP32-S3-DevKitC-1  [tinkr-esp32]  → esp32s3-left</span>
+<span class="fn">tinkr</span> device use esp32s3-left <span class="punc">--nickname</span> <span class="str">"kitchen sensor"</span></pre>
+
+    <h2 id="deploy">5. Deploy <a href="#deploy" class="opacity-0 hover:opacity-100 text-cyan no-underline">#</a></h2>
+    <p>Open <code>main.py</code>, write the LED-tinkr code, save, and deploy:</p>
+    <pre class="mono text-[12.5px] bg-surface-2 border border-default rounded-md p-4 overflow-x-auto scrollbar"><span class="cmt"># main.py</span>
+<span class="kw">from</span> machine <span class="kw">import</span> Pin
+<span class="kw">import</span> time
+
+led = Pin(<span class="num">48</span>, Pin.OUT)
+
+<span class="kw">while</span> <span class="kw">True</span>:
+    led.value(<span class="num">1</span>)
+    time.sleep_ms(<span class="num">500</span>)
+    led.value(<span class="num">0</span>)
+    time.sleep_ms(<span class="num">500</span>)</pre>
+    <p>Then run:</p>
+    <pre class="mono text-[12.5px] bg-surface-2 border border-default rounded-md p-3 overflow-x-auto scrollbar"><span class="fn">tinkr</span> project deploy</pre>
+
+    <div class="mt-4 rounded-md border border-green/30 bg-green/5 p-4 text-sm">
+      <div class="flex items-center gap-2 font-semibold text-green"><span>✓</span> Result</div>
+      <p class="mt-1 text-dim">The deploy stages flash, upload, and reboot the device in one command. When the LED starts tinkring, you have a working Tinkr project.</p>
+    </div>
+
+    <h2 id="next">What's next? <a href="#next" class="opacity-0 hover:opacity-100 text-cyan no-underline">#</a></h2>
+    <ul>
+      <li>Open the <a href="02-tauri-shell.html">Tauri shell</a> to get a Monaco editor and an agent chat panel.</li>
+      <li>Browse the <a href="03-marketplace.html">marketplace</a> for plugins that add more chip families.</li>
+      <li>Read the <a href="#">plugin spec</a> if you want to build a hardware plugin of your own.</li>
+      <li>When your project deploys successfully, the capture layer will offer to save it as a <strong>recipe</strong> for the community.</li>
+    </ul>
+
+    <!-- Page nav -->
+    <div class="mt-16 pt-6 border-t border-default grid sm:grid-cols-2 gap-3 not-prose">
+      <a href="#" class="block p-4 rounded-md border border-default hover:border-cyan/40">
+        <div class="text-xs mono text-muted">← previous</div>
+        <div class="font-medium mt-1">Introduction</div>
+      </a>
+      <a href="#" class="block p-4 rounded-md border border-default hover:border-cyan/40 text-right">
+        <div class="text-xs mono text-muted">next →</div>
+        <div class="font-medium mt-1">Installation</div>
+      </a>
+    </div>
+
+    <div class="mt-8 text-xs mono text-muted not-prose flex items-center gap-3">
+      <a href="#" class="text-cyan hover:underline">edit this page on GitHub ↗</a>
+      <span>·</span>
+      <a href="#" class="text-cyan hover:underline">report an issue</a>
+      <span>·</span>
+      <a href="#" class="text-cyan hover:underline">suggest an edit</a>
+    </div>
+  </main>
+
+  <!-- ============ RIGHT: on-page TOC ============ -->
+  <aside class="sticky top-[6.5rem] self-start max-h-[calc(100vh-7rem)] overflow-y-auto scrollbar" aria-label="On this page">
+    <div class="text-xs mono uppercase text-muted tracking-wider mb-2">on this page</div>
+    <ul class="text-sm space-y-1 border-l border-default pl-3">
+      <li><a href="#install" class="text-cyan">1. Install</a></li>
+      <li><a href="#init" class="text-dim hover:text-default">2. Initialize a project</a></li>
+      <li><a href="#plugin" class="text-dim hover:text-default">3. Add a hardware plugin</a></li>
+      <li><a href="#device" class="text-dim hover:text-default">4. Find your device</a></li>
+      <li><a href="#deploy" class="text-dim hover:text-default">5. Deploy</a></li>
+      <li><a href="#next" class="text-dim hover:text-default">What's next?</a></li>
+    </ul>
+    <div class="mt-6 text-xs mono text-muted border-t border-default pt-4">
+      <a href="#" class="flex items-center gap-1.5 text-cyan hover:underline">
+        <span>edit on GitHub ↗</span>
+      </a>
+      <div class="mt-2 text-muted">Last updated 2 days ago</div>
+    </div>
+  </aside>
+</div>
+
+<footer class="border-t border-default">
+  <div class="max-w-[1500px] mx-auto px-6 py-8 flex items-center justify-between text-xs mono text-muted">
+    <div>tinkr 0.5.0 mockup 04 — docs site</div>
+    <div class="flex items-center gap-4">
+      <a href="03-marketplace.html" class="hover:text-cyan">← marketplace</a>
+      <a href="05-kb-viewer.html" class="hover:text-cyan">kb viewer →</a>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>

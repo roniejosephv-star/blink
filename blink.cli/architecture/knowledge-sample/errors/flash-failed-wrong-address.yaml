@@ -1,0 +1,19 @@
+type: error
+id: error/flash-failed-wrong-address
+category: flash
+error_code: FLASH_FAILED_WRONG_ADDRESS
+summary: "Firmware flash fails or bricks the device due to wrong flash start address"
+likely_causes:
+  - fact_id: fact/esp32-flash-addresses
+    summary: "ESP32 flash start addresses differ by chip family"
+  - summary: "Using a firmware built for a different chip family (e.g., esp32 firmware on esp32s3)"
+fix_steps:
+  - "Run blink-esp32-identify --port <port> to identify the chip family. Use the family's correct flash start address."
+  - "Most esptool commands accept the firmware file and the chip type, and compute the address automatically. Prefer this over manual addresses."
+  - "If you flashed with the wrong address, you may need to reflash with esptool erase_flash first, then flash with the correct address."
+verify_steps:
+  - "After flashing, the device should reboot and show a MicroPython REPL prompt (>>> ) or the expected firmware's banner in the serial monitor."
+  - "If the device boots in a loop showing 'ets_main.c' or garbage, the flash is corrupted — re-flash with erase_flash first."
+contributed_by: "@ronie"
+contributed_at: "2026-08-12T14:32:00Z"
+verified_at: "2026-08-12"

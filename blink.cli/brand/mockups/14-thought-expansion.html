@@ -1,0 +1,613 @@
+<!doctype html>
+<!--
+  Tinkr Mockup 14 — Thought Expansion (Observability Deep View)
+  ======================================================================
+  The "Thought 1 time(s) >" in mockup 12 expands into this. The agent's
+  reasoning is not a black box. Every step is visible. Every tool call
+  is logged. Every decision is recorded.
+
+  This solves the observability problem: the developer sees what is
+  happening in front of them, step by step, and can review the report
+  for each action.
+
+  5 step types:
+  - READ    — file read or KB query
+  - THINK   — model reasoning step
+  - DECIDE  — branch the user can override
+  - ACT     — file change, command run, or external call
+  - REPORT  — generated artifact the user reviews
+  ======================================================================
+-->
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Tinkr — Thought Expansion</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --brand-cyan: #5EEAD4;
+    --brand-cyan-dim: #0D9488;
+    --brand-amber: #FB923C;
+    --brand-amber-dim: #EA580C;
+    --brand-violet: #A78BFA;
+    --bg: #0A0A0B;
+    --surface: #111113;
+    --surface-2: #161618;
+    --surface-3: #1C1C1F;
+    --border: #27272A;
+    --border-strong: #3F3F46;
+    --text: #FAFAFA;
+    --text-2: #A1A1AA;
+    --text-3: #71717A;
+    --ok: #22C55E;
+    --warn: #F59E0B;
+    --err: #EF4444;
+    --info: #3B82F6;
+    --font-sans: 'Inter', system-ui, sans-serif;
+    --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+    --sp-1: 4px;
+    --sp-2: 8px;
+    --sp-3: 12px;
+    --sp-4: 16px;
+    --sp-6: 24px;
+    --sp-8: 32px;
+    --r-sm: 4px;
+    --r-md: 8px;
+    --r-lg: 12px;
+  }
+  [data-theme="light"] {
+    --bg: #FAFAFA;
+    --surface: #FFFFFF;
+    --surface-2: #F4F4F5;
+    --surface-3: #E4E4E7;
+    --border: #E4E4E7;
+    --border-strong: #A1A1AA;
+    --text: #0A0A0B;
+    --text-2: #52525B;
+    --text-3: #71717A;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: var(--font-sans);
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    padding: var(--sp-6) var(--sp-8);
+  }
+  .mono { font-family: var(--font-mono); }
+
+  /* === Wordmark === */
+  .wordmark {
+    font-family: var(--font-mono);
+    font-weight: 600;
+    font-size: 15px;
+    color: var(--brand-cyan);
+  }
+  .wordmark .led {
+    color: var(--brand-amber);
+    margin: 0 1px;
+    animation: idle 1s ease-in-out infinite;
+  }
+  @keyframes idle {
+    0%, 100% { opacity: 0.55; }
+    50% { opacity: 1; transform: scale(1.15); }
+  }
+
+  .container {
+    max-width: 900px;
+    margin: 0 auto;
+  }
+
+  /* === Top breadcrumb === */
+  .crumb {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-2);
+    color: var(--text-3);
+    font-size: 12px;
+    margin-bottom: var(--sp-6);
+  }
+  .crumb a { color: var(--text-2); text-decoration: none; }
+  .crumb a:hover { color: var(--brand-cyan); }
+  .crumb .sep { color: var(--text-3); }
+
+  /* === Header === */
+  .head {
+    margin-bottom: var(--sp-6);
+  }
+  .head h1 {
+    font-size: 22px;
+    font-weight: 600;
+    margin-bottom: var(--sp-2);
+  }
+  .head .subtitle {
+    color: var(--text-2);
+    font-size: 14px;
+  }
+  .head .turn-meta {
+    display: flex;
+    gap: var(--sp-4);
+    margin-top: var(--sp-3);
+    font-size: 12px;
+    color: var(--text-3);
+  }
+  .head .turn-meta span strong { color: var(--text); font-weight: 500; }
+
+  /* === The user's intent === */
+  .intent {
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--brand-cyan);
+    border-radius: var(--r-md);
+    padding: var(--sp-3) var(--sp-4);
+    margin-bottom: var(--sp-6);
+  }
+  .intent .label {
+    font-size: 10.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-3);
+    font-weight: 600;
+    margin-bottom: 4px;
+  }
+  .intent .body {
+    font-size: 14px;
+    color: var(--text);
+  }
+
+  /* === Timeline === */
+  .timeline {
+    position: relative;
+    padding-left: 32px;
+  }
+  .timeline::before {
+    content: '';
+    position: absolute;
+    left: 11px;
+    top: 8px;
+    bottom: 0;
+    width: 2px;
+    background: var(--border);
+  }
+
+  /* === Step === */
+  .step {
+    position: relative;
+    padding-bottom: var(--sp-6);
+  }
+  .step:last-child { padding-bottom: 0; }
+
+  .step .node {
+    position: absolute;
+    left: -28px;
+    top: 4px;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: var(--surface-3);
+    border: 2px solid var(--border-strong);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1;
+  }
+  .step .node.done {
+    background: var(--ok);
+    border-color: var(--ok);
+    color: var(--bg);
+  }
+  .step .node.active {
+    background: var(--brand-amber);
+    border-color: var(--brand-amber);
+    color: var(--bg);
+    box-shadow: 0 0 0 4px rgba(251, 146, 60, 0.2);
+  }
+  .step .node.error {
+    background: var(--err);
+    border-color: var(--err);
+    color: var(--bg);
+  }
+  .step .node .i { width: 12px; height: 12px; }
+
+  .step .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-3);
+    font-weight: 600;
+    margin-bottom: 4px;
+  }
+  .step .badge.read { color: var(--info); }
+  .step .badge.think { color: var(--brand-violet); }
+  .step .badge.decide { color: var(--brand-amber); }
+  .step .badge.act { color: var(--brand-cyan); }
+  .step .badge.report { color: var(--ok); }
+
+  .step .title {
+    font-size: 14px;
+    color: var(--text);
+    font-weight: 500;
+    margin-bottom: 4px;
+  }
+  .step .body {
+    font-size: 13.5px;
+    color: var(--text-2);
+    line-height: 1.6;
+  }
+
+  /* === Code block inside a step === */
+  .code {
+    background: var(--surface-3);
+    border: 1px solid var(--border);
+    border-radius: var(--r-md);
+    padding: var(--sp-2) var(--sp-3);
+    margin-top: var(--sp-2);
+    font-family: var(--font-mono);
+    font-size: 12.5px;
+    color: var(--text-2);
+    overflow-x: auto;
+  }
+  .code .comment { color: var(--text-3); }
+  .code .cmd-cmd { color: var(--brand-cyan); }
+  .code .string { color: var(--ok); }
+  .code .key { color: var(--brand-amber); }
+
+  /* === Decision callout === */
+  .decision {
+    background: var(--surface-2);
+    border: 1px solid var(--brand-amber);
+    border-radius: var(--r-md);
+    padding: var(--sp-3) var(--sp-4);
+    margin-top: var(--sp-2);
+  }
+  .decision .head {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-2);
+    margin-bottom: var(--sp-2);
+  }
+  .decision .head .pill {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: 2px 6px;
+    background: var(--brand-amber);
+    color: var(--bg);
+    border-radius: var(--r-sm);
+    font-weight: 600;
+  }
+  .decision .head .label { font-size: 13px; font-weight: 500; }
+  .decision .body { font-size: 13px; color: var(--text-2); }
+  .decision .actions {
+    display: flex;
+    gap: var(--sp-2);
+    margin-top: var(--sp-3);
+  }
+  .btn {
+    font-size: 12px;
+    padding: 5px var(--sp-3);
+    border-radius: var(--r-sm);
+    border: 1px solid var(--border);
+    background: var(--surface-3);
+    color: var(--text);
+    cursor: pointer;
+    font-family: var(--font-sans);
+    font-weight: 500;
+  }
+  .btn:hover { background: var(--surface-2); }
+  .btn.primary {
+    background: var(--brand-amber);
+    color: var(--bg);
+    border-color: var(--brand-amber);
+  }
+  .btn.primary:hover { background: var(--brand-amber-dim); }
+  .btn.ghost { background: transparent; }
+
+  /* === File change block === */
+  .file-change {
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: var(--r-md);
+    margin-top: var(--sp-2);
+    overflow: hidden;
+  }
+  .file-change .head {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-2);
+    padding: var(--sp-2) var(--sp-3);
+    background: var(--surface-3);
+    border-bottom: 1px solid var(--border);
+    font-family: var(--font-mono);
+    font-size: 12.5px;
+  }
+  .file-change .head .path { flex: 1; color: var(--text); }
+  .file-change .head .stats {
+    color: var(--text-3);
+    font-size: 11.5px;
+  }
+  .file-change .head .stats .add { color: var(--ok); }
+  .file-change .head .stats .del { color: var(--err); }
+  .file-change .diff {
+    padding: var(--sp-3);
+    font-family: var(--font-mono);
+    font-size: 12px;
+    line-height: 1.6;
+  }
+  .file-change .diff .line { white-space: pre; }
+  .file-change .diff .add { background: rgba(34, 197, 94, 0.08); color: var(--ok); }
+  .file-change .diff .del { background: rgba(239, 68, 68, 0.08); color: var(--err); }
+  .file-change .diff .ctx { color: var(--text-2); }
+
+  /* === Active step (the one currently in progress) === */
+  .step.active .body {
+    color: var(--text);
+  }
+
+  /* === Action report summary at the bottom === */
+  .report {
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: var(--r-lg);
+    padding: var(--sp-4);
+    margin-top: var(--sp-6);
+  }
+  .report h3 {
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: var(--sp-3);
+    display: flex;
+    align-items: center;
+    gap: var(--sp-2);
+  }
+  .report h3 .i { color: var(--brand-cyan); }
+  .report .row {
+    display: flex;
+    justify-content: space-between;
+    padding: var(--sp-2) 0;
+    font-size: 13px;
+    color: var(--text-2);
+  }
+  .report .row .label { color: var(--text-2); }
+  .report .row .val { color: var(--text); font-family: var(--font-mono); font-size: 12.5px; }
+  .report .row .val.ok { color: var(--ok); }
+  .report .row .val.warn { color: var(--warn); }
+  .report .actions {
+    display: flex;
+    gap: var(--sp-2);
+    margin-top: var(--sp-4);
+    padding-top: var(--sp-4);
+    border-top: 1px solid var(--border);
+  }
+
+  /* === Icons === */
+  .i { width: 14px; height: 14px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0; }
+</style>
+</head>
+<body>
+
+<div class="container">
+
+  <!-- Breadcrumb -->
+  <div class="crumb">
+    <a href="./12-agentic-orchestrator.html" style="display:inline-flex; align-items:center; gap:6px; text-decoration:none; color: var(--brand-cyan);">
+      <svg width="18" height="18" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0; filter: drop-shadow(0 0 1.2px var(--brand-cyan-glow, #5EEAD4));">
+        <g style="fill:none; stroke: var(--brand-cyan-dim, #0D9488); stroke-width: 1.4; stroke-linecap: round; stroke-linejoin: round; opacity: 0.6;">
+          <path d="M 8 15 L 25 15 L 30 20 L 30 32"/>
+          <path d="M 72 15 L 92 15"/>
+          <path d="M 50 8 L 50 25 L 47 28 L 50 32"/>
+          <path d="M 35 22 L 65 22"/>
+          <path d="M 8 50 L 22 50 L 28 47 L 38 50"/>
+          <path d="M 62 50 L 72 50 L 78 53 L 92 50"/>
+          <path d="M 38 50 L 50 50 L 50 65 L 47 68 L 50 72"/>
+          <path d="M 30 85 L 50 85 L 70 85"/>
+        </g>
+        <g style="fill: none; stroke: var(--brand-cyan-dim, #0D9488); stroke-width: 1; opacity: 0.7;">
+          <circle cx="8" cy="15" r="1.7"/><circle cx="92" cy="15" r="1.7"/>
+          <circle cx="50" cy="8" r="1.7"/><circle cx="35" cy="22" r="1.4"/><circle cx="65" cy="22" r="1.4"/>
+          <circle cx="8" cy="50" r="1.7"/><circle cx="92" cy="50" r="1.7"/>
+          <circle cx="50" cy="92" r="1.7"/>
+        </g>
+        <g style="fill: var(--brand-cyan-dim, #0D9488); opacity: 0.7;">
+          <circle cx="30" cy="15" r="1.6"/><circle cx="50" cy="22" r="1.6"/>
+          <circle cx="50" cy="50" r="2.0"/>
+        </g>
+        <circle cx="50" cy="50" r="3.5" style="fill: var(--brand-amber, #FB923C); opacity: 0.85; filter: drop-shadow(0 0 2px var(--brand-amber, #FB923C));"/>
+      </svg>
+      <span class="wordmark">tinkr</span>
+    </a>
+    <span class="sep">›</span>
+    <a href="./12-agentic-orchestrator.html">turn #1</a>
+    <span class="sep">›</span>
+    <span>thought</span>
+  </div>
+
+  <!-- Header -->
+  <div class="head">
+    <h1>Thought #1 — audit the project</h1>
+    <div class="subtitle">Step-by-step observability for the agent's reasoning. Every action is logged. Every decision is reviewable.</div>
+    <div class="turn-meta">
+      <span><strong>turn</strong> 1 of 1</span>
+      <span><strong>duration</strong> 4.2s</span>
+      <span><strong>tools</strong> 4 called</span>
+      <span><strong>tokens</strong> 1,847 in / 412 out</span>
+      <span><strong>cost</strong> $0.0021</span>
+    </div>
+  </div>
+
+  <!-- User intent -->
+  <div class="intent">
+    <div class="label">You asked</div>
+    <div class="body">"Audit the project — what skills are connected, what's on disk, and what gaps need my action?"</div>
+  </div>
+
+  <!-- Timeline -->
+  <div class="timeline">
+
+    <!-- Step 1: READ -->
+    <div class="step">
+      <div class="node done">
+        <svg class="i" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>
+      </div>
+      <div class="badge read">step 1 · read</div>
+      <div class="title">Read project root</div>
+      <div class="body">Listed the workspace to identify the project layout.</div>
+      <div class="code">
+<span class="comment"># 0.3s</span><br>
+ls /Users/mindflow/Projects/Blink/blink.cli/<br>
+→ <span class="string">architecture/  brand/  lib/  plugins/  tools/  pyproject.toml  README.md</span>
+      </div>
+    </div>
+
+    <!-- Step 2: READ -->
+    <div class="step">
+      <div class="node done">
+        <svg class="i" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>
+      </div>
+      <div class="badge read">step 2 · read</div>
+      <div class="title">Read decisions log</div>
+      <div class="body">Pulled the canonical decision history. Found 15 A-numbers (A1-A15), last updated 2026-08-12 23:25.</div>
+      <div class="code">
+grep -E "^### A[0-9]+" architecture/decisions.md<br>
+→ 15 decisions, latest = A15 (open-source resource model)
+      </div>
+    </div>
+
+    <!-- Step 3: THINK -->
+    <div class="step">
+      <div class="node done">
+        <svg class="i" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+      </div>
+      <div class="badge think">step 3 · think</div>
+      <div class="title">Cross-reference skills ↔ methodology</div>
+      <div class="body">The methodology doc lists 17 Tinkr skills. Verified each is on disk, registered in <span class="mono">skill-hub.json</span>, and referenced in the doc. Found 0 orphans and 0 missing.</div>
+    </div>
+
+    <!-- Step 4: READ -->
+    <div class="step">
+      <div class="node done">
+        <svg class="i" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>
+      </div>
+      <div class="badge read">step 4 · read</div>
+      <div class="title">Read brand spec</div>
+      <div class="body">Confirmed all 8 hard brand rules and the 152 design tokens. Wordmark uses amber dot (#FB923C), cyan letters (#5EEAD4), Inter + JetBrains Mono.</div>
+    </div>
+
+    <!-- Step 5: ACT (file change) -->
+    <div class="step">
+      <div class="node done">
+        <svg class="i" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>
+      </div>
+      <div class="badge act">step 5 · act</div>
+      <div class="title">Detected 1 missing piece — the agentic orchestrator UI mockups</div>
+      <div class="body">The user requested a "Mavis-like" agentic orchestrator surface. No existing mockup covers this. Created 4 new mockups + 1 design spec.</div>
+      <div class="file-change">
+        <div class="head">
+          <span class="path">brand/mockups/12-agentic-orchestrator.html</span>
+          <span class="stats"><span class="add">+482</span> <span class="del">-0</span></span>
+        </div>
+        <div class="diff">
+<div class="line ctx">+ &lt;!doctype html&gt;</div>
+<div class="line ctx">+ &lt;!-- Tinkr Mockup 12 — Agentic Orchestrator --&gt;</div>
+<div class="line ctx">+ &lt;title&gt;Tinkr — Agentic Orchestrator&lt;/title&gt;</div>
+        </div>
+      </div>
+      <div class="file-change">
+        <div class="head">
+          <span class="path">brand/mockups/13-wordmark-animations.html</span>
+          <span class="stats"><span class="add">+312</span> <span class="del">-0</span></span>
+        </div>
+      </div>
+      <div class="file-change">
+        <div class="head">
+          <span class="path">brand/mockups/14-thought-expansion.html</span>
+          <span class="stats"><span class="add">+402</span> <span class="del">-0</span></span>
+        </div>
+      </div>
+      <div class="file-change">
+        <div class="head">
+          <span class="path">brand/mockups/15-action-report.html</span>
+          <span class="stats"><span class="add">+368</span> <span class="del">-0</span></span>
+        </div>
+      </div>
+      <div class="file-change">
+        <div class="head">
+          <span class="path">architecture/agentic_orchestrator.md</span>
+          <span class="stats"><span class="add">+224</span> <span class="del">-0</span></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 6: DECIDE (with user override) -->
+    <div class="step">
+      <div class="node active">
+        <svg class="i" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5z"/></svg>
+      </div>
+      <div class="badge decide">step 6 · decide</div>
+      <div class="title">Awaiting your decision on the brand deck refresh</div>
+      <div class="body">The mockups reference 12 mockup files (vs 11 existing). Should I update <span class="mono">brand/mockups/README.md</span> to include the new ones, and bump the total count in <span class="mono">01-positioning.md</span>?</div>
+      <div class="decision">
+        <div class="head">
+          <span class="pill">A17</span>
+          <span class="label">Update brand artifacts to reflect 4 new mockups</span>
+        </div>
+        <div class="body">Brand surfaces (README, positioning, SUMMARY) still say "11 mockups" — adding 4 changes that to 15. Trivial change, but a decision is a decision. Default: <strong>Yes, update.</strong></div>
+        <div class="actions">
+          <button class="btn primary">Approve (default)</button>
+          <button class="btn">Skip — leave brand artifacts alone</button>
+          <button class="btn ghost">Edit the change</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 7: REPORT (not yet started) -->
+    <div class="step">
+      <div class="node">
+        <svg class="i" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg>
+      </div>
+      <div class="badge report">step 7 · report</div>
+      <div class="title">Generate audit summary report</div>
+      <div class="body">Will produce a 1-page report: skills connected (17), files on disk (15 mockups + 14 architecture docs + brand spec), gaps (none), recommended next actions.</div>
+    </div>
+
+  </div>
+
+  <!-- Action report summary -->
+  <div class="report">
+    <h3>
+      <svg class="i" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg>
+      Action report (auto-generated)
+    </h3>
+    <div class="row"><span class="label">Tools called</span><span class="val">4 (read, grep, file-write, decision)</span></div>
+    <div class="row"><span class="label">Files read</span><span class="val">17</span></div>
+    <div class="row"><span class="label">Files created</span><span class="val">5 (4 mockups + 1 spec)</span></div>
+    <div class="row"><span class="label">Decisions needed</span><span class="val warn">1 (A17 — brand artifact update)</span></div>
+    <div class="row"><span class="label">Decisions recorded</span><span class="val ok">0</span></div>
+    <div class="row"><span class="label">KB entries created</span><span class="val">0</span></div>
+    <div class="row"><span class="label">Duration</span><span class="val">4.2s</span></div>
+    <div class="row"><span class="label">Cost</span><span class="val">$0.0021</span></div>
+    <div class="actions">
+      <button class="btn primary">Approve all & continue</button>
+      <button class="btn">Pause — let me review</button>
+      <button class="btn ghost">Open in repo</button>
+    </div>
+  </div>
+
+</div>
+
+<footer style="max-width: 900px; margin: 32px auto 0; padding: 16px 0; border-top: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; color: var(--text-3); font-size: 12px;">
+  <span>CLI: <code class="mono" style="color: var(--brand-cyan)">tinkr agent --trace "audit the project"</code></span>
+  <a href="https://github.com/tinkr-org/tinkr" style="color: var(--brand-cyan); text-decoration: none;">open in repo →</a>
+</footer>
+
+</body>
+</html>

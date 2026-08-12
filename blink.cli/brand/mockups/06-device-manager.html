@@ -1,0 +1,826 @@
+<!doctype html>
+<!--
+  Tinkr Mockup 06 — Device Manager (v1.5 surface)
+  ======================================================================
+  Design notes (in-app panel explains the same):
+
+  1. THE DEVICE MANAGER IS A FIRST-CLASS SURFACE, NOT A SIDE PANEL.
+     Detecting and managing hardware is a workflow in its own right —
+     not a sub-task of the editor. The Tauri shell has a dedicated
+     "Devices" route in the top bar (just like 02-tauri-shell has
+     "Project" / "Plugins" / "Knowledge"). Users come here to pair
+     a board, check compatibility, flash firmware, view a chip's
+     history, and audit which plugin version supports what.
+
+  2. CARD LIST, NOT TABLE. A scanned board is a rich object — chip
+     model, port, last project, KB entries, plugin compatibility.
+     A flat table would lose 60% of that. We use a card list where
+     each card carries: board SVG, name + chip + port, status badge
+     (online / offline / flashing / error), last-seen, action
+     cluster (Connect / Flash / REPL / ⋯), and a plugin-version
+     compatibility strip at the bottom of the card.
+
+  3. STATUS COLOR IS NEVER ALONE. Online/offline/flashing/error
+     uses color AND text AND a leading icon. WCAG 2.1 AA floor —
+     "color is never the only indicator." A red badge with the
+     word "Error" is unambiguous; a red dot alone would not be.
+
+  4. THE DETAILS PANEL IS A SLIDE-OUT, NOT A MODAL. Clicking a
+     device slides a 380px panel in from the right. Modal dialogs
+     interrupt flow; slide-outs preserve spatial memory. The user
+     can scroll the list behind the panel and click another card
+     to swap context without losing the panel state. (The same
+     pattern as 02-tauri-shell's chat panel.)
+
+  5. SCAN IS AN AMBER ACTION. "Scan for devices" is the page's
+     primary CTA — amber #FB923C, the "ship it" color, because
+     scanning is the moment a user commits to a hardware workflow.
+     It's the only amber element on the surface; everything else
+     uses the cyan / violet / status semantic palette. (Per
+     locked brand rule: amber = action / ship-it / LED.)
+
+  6. PLUGIN-COMPAT IS NOT A TOGGLE, IT'S A READING. Each card
+     shows which `tinkr-esp32` / `tinkr-rpi5` / etc. version
+     supports the chip. Version mismatches get an amber chip
+     with an arrow to "upgrade" — never a blocking warning.
+     The user can read at a glance whether their plugin is
+     out of date for this board.
+
+  7. EMPTY STATE IS ILLUSTRATED, NOT TEXT-ONLY. When zero devices
+     are found, show a small inline SVG of an unplugged board +
+     a single "Scan again" CTA. No error copy. Hardware is
+     physical — show the absence physically.
+
+  8. "MOCK DEVICES FOR TESTING" IS A FIRST-CLASS FOOTER LINK.
+     Lets the user try the UI without real hardware. Honoring
+     the v1.5 "4 free plugin projects per user" rule: the demo
+     flow must be cheap to enter.
+
+  9. ARIA + KEYBOARD. The card list is a `role="listbox"`. Each
+     card is an `option`. Arrow keys move selection. Enter opens
+     the details panel. Escape closes it. The scan button is
+     focusable and gets a 2px cyan focus ring on tab.
+
+  10. LIGHT + DARK. Dark default. Light is the same color
+      semantics — cyan = brand, amber = action, violet = AI,
+      green = online, red = error, slate = chrome.
+  ======================================================================
+-->
+<html lang="en" class="dark">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Tinkr — Device Manager</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  /* Brand tokens (locked per /Users/mindflow/Projects/Tinkr/tinkr.cli/brand/03-design-tokens.json) */
+  :root {
+    --bg: #0A0A0B;
+    --surface: #111113;
+    --surface-2: #161618;
+    --border: #1F1F23;
+    --border-strong: #27272A;
+    --text: #FAFAFA;
+    --text-dim: #A1A1AA;
+    --text-muted: #71717A;
+    --cyan: #5EEAD4;
+    --cyan-deep: #06B6D4;
+    --amber: #FB923C;
+    --amber-dim: #EA580C;
+    --violet: #A78BFA;
+    --violet-dim: #7C3AED;
+    --green: #22C55E;
+    --red: #EF4444;
+    --blue: #3B82F6;
+    --magenta: #C084FC;
+    --yellow: #F59E0B;
+  }
+  html.light {
+    --bg: #FAFAFA;
+    --surface: #FFFFFF;
+    --surface-2: #F4F4F5;
+    --border: #E4E4E7;
+    --border-strong: #A1A1AA;
+    --text: #0A0A0B;
+    --text-dim: #52525B;
+    --text-muted: #71717A;
+  }
+  html, body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .mono { font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace; }
+  .display { font-family: 'Space Grotesk', system-ui, sans-serif; }
+  .bg-bg { background-color: var(--bg); }
+  .bg-surface { background-color: var(--surface); }
+  .bg-surface-2 { background-color: var(--surface-2); }
+  .border-default { border-color: var(--border); }
+  .border-strong { border-color: var(--border-strong); }
+  .text-default { color: var(--text); }
+  .text-dim { color: var(--text-dim); }
+  .text-muted { color: var(--text-muted); }
+  .text-cyan { color: var(--cyan); }
+  .text-amber { color: var(--amber); }
+  .text-violet { color: var(--violet); }
+  .text-green { color: var(--green); }
+  .text-red { color: var(--red); }
+  .text-blue { color: var(--blue); }
+  .text-magenta { color: var(--magenta); }
+  .bg-cyan { background-color: var(--cyan); }
+  .bg-amber { background-color: var(--amber); }
+  .bg-violet { background-color: var(--violet); }
+  .bg-amber\/10 { background-color: rgba(251, 146, 60, 0.10); }
+  .bg-amber\/15 { background-color: rgba(251, 146, 60, 0.15); }
+  .bg-cyan\/5 { background-color: rgba(94, 234, 212, 0.05); }
+  .bg-cyan\/10 { background-color: rgba(94, 234, 212, 0.10); }
+  .bg-cyan\/15 { background-color: rgba(94, 234, 212, 0.15); }
+  .bg-violet\/10 { background-color: rgba(167, 139, 250, 0.10); }
+  .bg-violet\/15 { background-color: rgba(167, 139, 250, 0.15); }
+  .bg-green\/10 { background-color: rgba(34, 197, 94, 0.10); }
+  .bg-red\/10 { background-color: rgba(239, 68, 68, 0.10); }
+  .border-cyan\/40 { border-color: rgba(94, 234, 212, 0.40); }
+  .border-amber\/40 { border-color: rgba(251, 146, 60, 0.40); }
+  .border-amber { border-color: var(--amber); }
+  .border-cyan { border-color: var(--cyan); }
+  .border-violet\/30 { border-color: rgba(167, 139, 250, 0.30); }
+  .border-green\/30 { border-color: rgba(34, 197, 94, 0.30); }
+  .border-red\/30 { border-color: rgba(239, 68, 68, 0.30); }
+
+  /* Mac window */
+  .mac-chrome {
+    background: linear-gradient(180deg, #1E293B 0%, #0F172A 100%);
+  }
+  html.light .mac-chrome {
+    background: linear-gradient(180deg, #E2E8F0 0%, #CBD5E1 100%);
+  }
+
+  /* Focus ring (2px primary + 2px surface offset) */
+  *:focus-visible {
+    outline: 2px solid var(--cyan);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  /* Pulse */
+  @keyframes pulse-soft {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.45; }
+  }
+  .pulse-soft { animation: pulse-soft 1.6s ease-in-out infinite; }
+
+  @keyframes pulse-led {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(251, 146, 60, 0.7); }
+    50% { box-shadow: 0 0 0 6px rgba(251, 146, 60, 0); }
+  }
+  .pulse-led { animation: pulse-led 1.6s ease-out infinite; }
+
+  /* Scrollbar */
+  .scrollbar::-webkit-scrollbar { width: 8px; height: 8px; }
+  .scrollbar::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+  .scrollbar::-webkit-scrollbar-track { background: transparent; }
+
+  /* Selected card border-left accent */
+  .device-card[aria-selected="true"] {
+    border-color: var(--cyan);
+    background-color: rgba(94, 234, 212, 0.04);
+  }
+</style>
+</head>
+<body class="min-h-screen">
+
+<!-- Page wrapper (around the IDE window) -->
+<div class="max-w-[1500px] mx-auto px-6 py-8 space-y-6">
+
+  <!-- Top doc header (mockup framing, not the IDE) -->
+  <header class="flex items-center justify-between">
+    <div>
+      <div class="text-xs mono uppercase tracking-widest text-cyan">v1.5 surface · device manager</div>
+      <h1 class="display text-3xl md:text-4xl font-semibold tracking-tight mt-2">Every board you've ever <span class="text-cyan">plugged in</span>.</h1>
+      <p class="text-dim mt-3 max-w-2xl">The Device Manager lists detected hardware, previously-used devices, and the plugin versions that support each chip. It is a first-class route in the Tauri shell — not a sidebar.</p>
+    </div>
+    <div class="flex items-center gap-2">
+      <a href="05-kb-viewer.html" class="text-xs mono px-3 py-1.5 rounded-md bg-surface-2 border border-default hover:border-cyan/40">← kb viewer</a>
+      <a href="07-repl-monitor.html" class="text-xs mono px-3 py-1.5 rounded-md bg-surface-2 border border-default hover:border-cyan/40">repl monitor →</a>
+    </div>
+  </header>
+
+  <!-- ====================== THE IDE WINDOW ====================== -->
+  <div class="rounded-xl overflow-hidden border border-default">
+
+    <!-- Title bar -->
+    <div class="mac-chrome border-b border-default px-4 h-9 flex items-center gap-3 select-none" role="banner" aria-label="Window title bar">
+      <div class="flex items-center gap-1.5" role="group" aria-label="Window controls">
+        <button class="h-3 w-3 rounded-full bg-red-500 hover:bg-red-400 cursor-pointer" aria-label="Close window"></button>
+        <button class="h-3 w-3 rounded-full bg-amber-400 hover:bg-amber-300 cursor-pointer" aria-label="Minimize window"></button>
+        <button class="h-3 w-3 rounded-full bg-emerald-500 hover:bg-emerald-400 cursor-pointer" aria-label="Maximize window"></button>
+      </div>
+      <div class="flex-1 text-center text-[11px] mono text-dim">
+        <span class="text-default">kitchen-sensor</span> · <span class="text-cyan">⎇</span> <span class="text-default">main</span> · <span class="text-muted">Devices</span>
+      </div>
+      <div class="flex items-center gap-2 text-[11px] mono text-muted" role="group" aria-label="Title bar actions">
+        <button onclick="document.documentElement.classList.toggle('light')" class="px-2 py-0.5 rounded hover:bg-surface-2 cursor-pointer" aria-label="Toggle light/dark theme" title="Toggle theme (⌘⇧L)">
+          <span class="dark:hidden">☀ light</span>
+          <span class="hidden dark:inline">◐ dark</span>
+        </button>
+        <span>⌘P palette</span>
+      </div>
+    </div>
+
+    <!-- Top route bar (Tauri shell surface nav) -->
+    <div class="h-10 border-b border-default bg-surface-2 flex items-center px-3 gap-1" aria-label="Shell route nav">
+      <a href="02-tauri-shell.html" class="px-3 h-7 flex items-center text-[12px] text-dim hover:text-default hover:bg-surface rounded cursor-pointer">
+        <span class="text-cyan mr-1.5">▤</span> Project
+      </a>
+      <a href="#" class="px-3 h-7 flex items-center text-[12px] text-default bg-surface rounded border border-cyan/40 cursor-pointer" aria-current="page">
+        <span class="text-amber mr-1.5">⎈</span> Devices
+        <span class="ml-2 px-1.5 py-0.5 text-[10px] mono bg-amber/15 text-amber rounded">4</span>
+      </a>
+      <a href="03-marketplace.html" class="px-3 h-7 flex items-center text-[12px] text-dim hover:text-default hover:bg-surface rounded cursor-pointer">
+        <span class="text-violet mr-1.5">⊞</span> Plugins
+      </a>
+      <a href="05-kb-viewer.html" class="px-3 h-7 flex items-center text-[12px] text-dim hover:text-default hover:bg-surface rounded cursor-pointer">
+        <span class="text-blue mr-1.5">◐</span> Knowledge
+      </a>
+      <a href="#" class="px-3 h-7 flex items-center text-[12px] text-dim hover:text-default hover:bg-surface rounded cursor-pointer">
+        <span class="text-magenta mr-1.5">⟳</span> Capture
+      </a>
+      <div class="flex-1"></div>
+      <div class="text-[11px] mono text-muted flex items-center gap-2">
+        <span><span class="h-1.5 w-1.5 rounded-full bg-green inline-block"></span> 2 online</span>
+        <span class="text-muted/60">·</span>
+        <span><span class="h-1.5 w-1.5 rounded-full bg-default/30 inline-block"></span> 1 idle</span>
+        <span class="text-muted/60">·</span>
+        <span><span class="h-1.5 w-1.5 rounded-full bg-red inline-block"></span> 1 error</span>
+      </div>
+    </div>
+
+    <!-- ====================== MAIN AREA ====================== -->
+    <div class="grid grid-cols-[1fr_380px] h-[720px] bg-bg">
+
+      <!-- ============ LEFT: Device list ============ -->
+      <main class="flex flex-col overflow-hidden" aria-label="Device list">
+
+        <!-- Page header -->
+        <div class="px-6 py-4 border-b border-default bg-surface flex items-center justify-between">
+          <div>
+            <div class="flex items-baseline gap-3">
+              <h1 class="display text-2xl font-semibold tracking-tight">Devices</h1>
+              <span class="text-[11px] mono text-muted">4 detected · 1 error</span>
+            </div>
+            <p class="text-dim text-[12px] mt-1">Detected hardware, plugin compatibility, and last-known projects. Scanned 12s ago.</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <!-- Filter dropdown -->
+            <div class="relative">
+              <button class="h-9 px-3 flex items-center gap-2 text-[12px] bg-surface-2 border border-default rounded-md hover:border-cyan/40 cursor-pointer" aria-haspopup="listbox" aria-expanded="false">
+                <span class="text-muted">Filter:</span>
+                <span class="text-default">All</span>
+                <svg class="h-3 w-3 text-muted" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M4 6l4 4 4-4"/></svg>
+              </button>
+            </div>
+            <!-- Search (secondary) -->
+            <div class="relative">
+              <input type="text" placeholder="Filter devices…" class="h-9 w-44 bg-surface-2 border border-default rounded-md text-[12px] px-3 placeholder:text-muted focus:outline-none focus:border-cyan/60" aria-label="Filter devices by name, chip, or port">
+            </div>
+            <!-- Scan button — AMBER CTA, the only one on the page -->
+            <button class="h-9 px-4 flex items-center gap-2 text-[12px] bg-amber text-black font-semibold rounded-md hover:bg-amber/90 cursor-pointer" aria-label="Scan for connected devices">
+              <svg class="h-4 w-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true">
+                <path d="M2 8a6 6 0 0 1 10.39-4.1M14 8a6 6 0 0 1-10.39 4.1" stroke-linecap="round"/>
+                <path d="M12.5 1.5v3h-3M3.5 14.5v-3h3" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+              Scan for devices
+            </button>
+          </div>
+        </div>
+
+        <!-- Card list -->
+        <div class="flex-1 overflow-y-auto scrollbar px-6 py-4 space-y-3" role="listbox" aria-label="Detected devices" aria-activedescendant="device-1">
+
+          <!-- ============== CARD 1: ESP32-S3 (online, selected) ============== -->
+          <div id="device-1" role="option" tabindex="0" aria-selected="true" class="device-card relative bg-surface border border-default rounded-lg p-4 hover:border-cyan/40 transition-colors cursor-pointer">
+            <div class="flex items-start gap-4">
+              <!-- Board SVG: ESP32 rectangle -->
+              <div class="shrink-0 w-14 h-14 rounded-md bg-surface-2 border border-default flex items-center justify-center" aria-hidden="true">
+                <svg viewBox="0 0 56 56" class="w-10 h-10">
+                  <rect x="6" y="14" width="44" height="28" rx="2" fill="none" stroke="#5EEAD4" stroke-width="1.5"/>
+                  <rect x="10" y="18" width="14" height="20" rx="1" fill="none" stroke="#27272A" stroke-width="1"/>
+                  <text x="17" y="32" text-anchor="middle" fill="#71717A" font-size="6" font-family="JetBrains Mono">ESP</text>
+                  <circle cx="42" cy="22" r="1.5" fill="#5EEAD4"/>
+                  <circle cx="46" cy="22" r="1.5" fill="#27272A"/>
+                  <rect x="30" y="20" width="6" height="16" rx="1" fill="none" stroke="#27272A" stroke-width="0.75"/>
+                </svg>
+              </div>
+
+              <!-- Main info -->
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-2 flex-wrap">
+                  <span class="text-sm font-semibold text-default">esp32s3-left</span>
+                  <span class="px-1.5 py-0.5 text-[10px] mono uppercase tracking-wider bg-cyan/15 text-cyan rounded">online</span>
+                  <span class="px-1.5 py-0.5 text-[10px] mono bg-surface-2 text-dim rounded">default</span>
+                  <span class="text-[10px] mono text-muted">ESP32-S3-WROOM-1 · 240 MHz · 320 KB SRAM</span>
+                </div>
+                <div class="mono text-[11px] text-dim mt-1 flex items-center gap-3">
+                  <span>/dev/cu.usbserial-1410</span>
+                  <span class="text-muted/60">·</span>
+                  <span>115200 baud</span>
+                  <span class="text-muted/60">·</span>
+                  <span class="text-cyan">micropython 1.24.1</span>
+                </div>
+                <div class="text-[11px] text-muted mt-1.5">Last seen: <span class="text-dim">just now</span> · Last project: <span class="text-cyan">kitchen-sensor</span> · 14 KB entries</div>
+              </div>
+
+              <!-- Actions -->
+              <div class="flex items-center gap-1.5 shrink-0">
+                <button class="h-8 px-3 text-[11px] mono bg-cyan/15 text-cyan border border-cyan/40 rounded-md hover:bg-cyan/25 cursor-pointer" aria-label="Connect to esp32s3-left">Connect</button>
+                <button class="h-8 px-3 text-[11px] mono bg-surface-2 text-default border border-default rounded-md hover:border-cyan/40 cursor-pointer" aria-label="Flash firmware to esp32s3-left">Flash</button>
+                <button class="h-8 px-3 text-[11px] mono bg-surface-2 text-default border border-default rounded-md hover:border-cyan/40 cursor-pointer" aria-label="Open REPL on esp32s3-left">REPL</button>
+                <button class="h-8 w-8 flex items-center justify-center text-muted hover:text-default hover:bg-surface-2 rounded-md cursor-pointer" aria-label="More actions for esp32s3-left">
+                  <svg class="h-4 w-4" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><circle cx="3" cy="8" r="1.25"/><circle cx="8" cy="8" r="1.25"/><circle cx="13" cy="8" r="1.25"/></svg>
+                </button>
+              </div>
+            </div>
+
+            <!-- Plugin compatibility strip -->
+            <div class="mt-3 pt-3 border-t border-default flex items-center justify-between text-[10px] mono">
+              <div class="flex items-center gap-2 flex-wrap">
+                <span class="text-muted">supports:</span>
+                <span class="px-1.5 py-0.5 bg-surface-2 text-cyan border border-cyan/30 rounded">tinkr-esp32 1.2.3</span>
+                <span class="px-1.5 py-0.5 bg-surface-2 text-cyan border border-cyan/30 rounded">micropython-runtime 0.8.1</span>
+                <span class="px-1.5 py-0.5 bg-surface-2 text-cyan border border-cyan/30 rounded">wifi-esp32 0.4.0</span>
+              </div>
+              <span class="text-green flex items-center gap-1">
+                <svg class="h-3 w-3" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 8l3 3 7-7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                all compatible
+              </span>
+            </div>
+          </div>
+
+          <!-- ============== CARD 2: RP2040 (online, flashing-flashable) ============== -->
+          <div role="option" tabindex="0" aria-selected="false" class="device-card relative bg-surface border border-default rounded-lg p-4 hover:border-cyan/40 transition-colors cursor-pointer">
+            <div class="flex items-start gap-4">
+              <!-- Board SVG: RPi Pico square -->
+              <div class="shrink-0 w-14 h-14 rounded-md bg-surface-2 border border-default flex items-center justify-center" aria-hidden="true">
+                <svg viewBox="0 0 56 56" class="w-10 h-10">
+                  <rect x="10" y="10" width="36" height="36" rx="2" fill="none" stroke="#A78BFA" stroke-width="1.5"/>
+                  <rect x="14" y="14" width="12" height="12" rx="1" fill="none" stroke="#27272A" stroke-width="0.75"/>
+                  <text x="20" y="23" text-anchor="middle" fill="#71717A" font-size="5" font-family="JetBrains Mono">PICO</text>
+                  <circle cx="40" cy="20" r="1.2" fill="#A78BFA"/>
+                  <rect x="14" y="32" width="28" height="6" rx="1" fill="none" stroke="#27272A" stroke-width="0.75"/>
+                  <circle cx="34" cy="35" r="1" fill="#27272A"/>
+                </svg>
+              </div>
+
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-2 flex-wrap">
+                  <span class="text-sm font-semibold text-default">rp2040-pico</span>
+                  <span class="px-1.5 py-0.5 text-[10px] mono uppercase tracking-wider bg-cyan/15 text-cyan rounded">online</span>
+                  <span class="text-[10px] mono text-muted">Raspberry Pi Pico W · RP2040 · 133 MHz · 264 KB SRAM</span>
+                </div>
+                <div class="mono text-[11px] text-dim mt-1 flex items-center gap-3">
+                  <span>/dev/cu.usbmodem14101</span>
+                  <span class="text-muted/60">·</span>
+                  <span>USB 1.1</span>
+                  <span class="text-muted/60">·</span>
+                  <span class="text-violet">circuitpython 9.0.5</span>
+                </div>
+                <div class="text-[11px] text-muted mt-1.5">Last seen: <span class="text-dim">8s ago</span> · Last project: <span class="text-cyan">led-matrix</span> · 3 KB entries</div>
+              </div>
+
+              <div class="flex items-center gap-1.5 shrink-0">
+                <button class="h-8 px-3 text-[11px] mono bg-cyan/15 text-cyan border border-cyan/40 rounded-md hover:bg-cyan/25 cursor-pointer" aria-label="Connect to rp2040-pico">Connect</button>
+                <button class="h-8 px-3 text-[11px] mono bg-surface-2 text-default border border-default rounded-md hover:border-cyan/40 cursor-pointer" aria-label="Flash firmware to rp2040-pico">Flash</button>
+                <button class="h-8 px-3 text-[11px] mono bg-surface-2 text-default border border-default rounded-md hover:border-cyan/40 cursor-pointer" aria-label="Open REPL on rp2040-pico">REPL</button>
+                <button class="h-8 w-8 flex items-center justify-center text-muted hover:text-default hover:bg-surface-2 rounded-md cursor-pointer" aria-label="More actions for rp2040-pico">
+                  <svg class="h-4 w-4" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><circle cx="3" cy="8" r="1.25"/><circle cx="8" cy="8" r="1.25"/><circle cx="13" cy="8" r="1.25"/></svg>
+                </button>
+              </div>
+            </div>
+
+            <div class="mt-3 pt-3 border-t border-default flex items-center justify-between text-[10px] mono">
+              <div class="flex items-center gap-2 flex-wrap">
+                <span class="text-muted">supports:</span>
+                <span class="px-1.5 py-0.5 bg-surface-2 text-cyan border border-cyan/30 rounded">tinkr-rp2040 0.9.4</span>
+                <span class="px-1.5 py-0.5 bg-surface-2 text-cyan border border-cyan/30 rounded">circuitpython-runtime 1.0.0</span>
+              </div>
+              <span class="text-amber flex items-center gap-1">
+                <svg class="h-3 w-3" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M8 3v6m0 3v.5" stroke-linecap="round"/></svg>
+                tinkr-rp2040 update available (1.0.0)
+              </span>
+            </div>
+          </div>
+
+          <!-- ============== CARD 3: nRF52 (offline / idle) ============== -->
+          <div role="option" tabindex="0" aria-selected="false" class="device-card relative bg-surface border border-default rounded-lg p-4 hover:border-cyan/40 transition-colors cursor-pointer">
+            <div class="flex items-start gap-4">
+              <!-- Board SVG: nRF52 rounded square -->
+              <div class="shrink-0 w-14 h-14 rounded-md bg-surface-2 border border-default flex items-center justify-center" aria-hidden="true">
+                <svg viewBox="0 0 56 56" class="w-10 h-10">
+                  <rect x="8" y="8" width="40" height="40" rx="8" fill="none" stroke="#71717A" stroke-width="1.5"/>
+                  <rect x="14" y="14" width="10" height="10" rx="1" fill="none" stroke="#27272A" stroke-width="0.75"/>
+                  <text x="19" y="22" text-anchor="middle" fill="#71717A" font-size="4.5" font-family="JetBrains Mono">nRF</text>
+                  <circle cx="38" cy="20" r="1.2" fill="#27272A"/>
+                  <rect x="32" y="14" width="12" height="6" rx="1" fill="none" stroke="#27272A" stroke-width="0.75"/>
+                  <rect x="14" y="32" width="28" height="12" rx="2" fill="none" stroke="#27272A" stroke-width="0.75"/>
+                </svg>
+              </div>
+
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-2 flex-wrap">
+                  <span class="text-sm font-semibold text-default">nrf52-band</span>
+                  <span class="px-1.5 py-0.5 text-[10px] mono uppercase tracking-wider bg-surface-2 text-muted rounded">offline</span>
+                  <span class="text-[10px] mono text-muted">XIAO nRF52840 · ARM Cortex-M4 · 64 MHz · 256 KB SRAM</span>
+                </div>
+                <div class="mono text-[11px] text-dim mt-1 flex items-center gap-3">
+                  <span>no port</span>
+                  <span class="text-muted/60">·</span>
+                  <span>last seen 3d ago</span>
+                  <span class="text-muted/60">·</span>
+                  <span class="text-muted">circuitpython 8.2.10</span>
+                </div>
+                <div class="text-[11px] text-muted mt-1.5">Last project: <span class="text-cyan">ble-heartrate</span> · 7 KB entries · unplugged since 3 days</div>
+              </div>
+
+              <div class="flex items-center gap-1.5 shrink-0">
+                <button class="h-8 px-3 text-[11px] mono bg-surface-2 text-muted border border-default rounded-md cursor-not-allowed" disabled aria-label="Connect to nrf52-band (offline)">Connect</button>
+                <button class="h-8 px-3 text-[11px] mono bg-surface-2 text-default border border-default rounded-md hover:border-cyan/40 cursor-pointer" aria-label="View flash options for nrf52-band">Flash</button>
+                <button class="h-8 px-3 text-[11px] mono bg-surface-2 text-muted border border-default rounded-md cursor-not-allowed" disabled aria-label="Open REPL on nrf52-band (offline)">REPL</button>
+                <button class="h-8 w-8 flex items-center justify-center text-muted hover:text-default hover:bg-surface-2 rounded-md cursor-pointer" aria-label="More actions for nrf52-band">
+                  <svg class="h-4 w-4" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><circle cx="3" cy="8" r="1.25"/><circle cx="8" cy="8" r="1.25"/><circle cx="13" cy="8" r="1.25"/></svg>
+                </button>
+              </div>
+            </div>
+
+            <div class="mt-3 pt-3 border-t border-default flex items-center justify-between text-[10px] mono">
+              <div class="flex items-center gap-2 flex-wrap">
+                <span class="text-muted">supports:</span>
+                <span class="px-1.5 py-0.5 bg-surface-2 text-cyan border border-cyan/30 rounded">tinkr-nrf52 0.5.2</span>
+                <span class="px-1.5 py-0.5 bg-surface-2 text-cyan border border-cyan/30 rounded">circuitpython-runtime 1.0.0</span>
+                <span class="px-1.5 py-0.5 bg-surface-2 text-cyan border border-cyan/30 rounded">ble-stack 0.2.1</span>
+              </div>
+              <span class="text-muted flex items-center gap-1">
+                <svg class="h-3 w-3" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="8" cy="8" r="6"/><path d="M5 5l6 6M11 5l-6 6" stroke-linecap="round"/></svg>
+                unplugged
+              </span>
+            </div>
+          </div>
+
+          <!-- ============== CARD 4: RPi 5 (error) ============== -->
+          <div role="option" tabindex="0" aria-selected="false" class="device-card relative bg-surface border border-default rounded-lg p-4 hover:border-red/40 transition-colors cursor-pointer">
+            <div class="flex items-start gap-4">
+              <!-- Board SVG: RPi 5 square -->
+              <div class="shrink-0 w-14 h-14 rounded-md bg-surface-2 border border-default flex items-center justify-center" aria-hidden="true">
+                <svg viewBox="0 0 56 56" class="w-10 h-10">
+                  <rect x="8" y="8" width="40" height="40" rx="3" fill="none" stroke="#EF4444" stroke-width="1.5"/>
+                  <rect x="12" y="12" width="20" height="20" rx="1" fill="none" stroke="#27272A" stroke-width="0.75"/>
+                  <text x="22" y="25" text-anchor="middle" fill="#71717A" font-size="5" font-family="JetBrains Mono">RPi5</text>
+                  <circle cx="42" cy="16" r="1.2" fill="#27272A"/>
+                  <rect x="36" y="12" width="8" height="4" rx="0.5" fill="none" stroke="#27272A" stroke-width="0.5"/>
+                  <rect x="12" y="36" width="32" height="8" rx="1" fill="none" stroke="#27272A" stroke-width="0.5"/>
+                  <circle cx="18" cy="40" r="0.8" fill="#27272A"/>
+                  <circle cx="22" cy="40" r="0.8" fill="#27272A"/>
+                  <circle cx="26" cy="40" r="0.8" fill="#27272A"/>
+                </svg>
+              </div>
+
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-2 flex-wrap">
+                  <span class="text-sm font-semibold text-default">rpi5-edge</span>
+                  <span class="px-1.5 py-0.5 text-[10px] mono uppercase tracking-wider bg-red/10 text-red border border-red/30 rounded flex items-center gap-1">
+                    <svg class="h-2.5 w-2.5" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" stroke-linecap="round"/></svg>
+                    error
+                  </span>
+                  <span class="text-[10px] mono text-muted">Raspberry Pi 5 · 8 GB · Bookworm · linux 6.6.31</span>
+                </div>
+                <div class="mono text-[11px] text-dim mt-1 flex items-center gap-3">
+                  <span>192.168.1.42:22 (ssh)</span>
+                  <span class="text-muted/60">·</span>
+                  <span class="text-red">tinkr agent not responding</span>
+                </div>
+                <div class="text-[11px] text-muted mt-1.5">Last project: <span class="text-cyan">edge-vision</span> · 22 KB entries · <span class="text-red">see KB fix</span> <span class="text-cyan">→ ssh.tinkr_agent_timeout</span></div>
+              </div>
+
+              <div class="flex items-center gap-1.5 shrink-0">
+                <button class="h-8 px-3 text-[11px] mono bg-red/10 text-red border border-red/30 rounded-md hover:bg-red/15 cursor-pointer" aria-label="Retry connection to rpi5-edge">Retry</button>
+                <button class="h-8 px-3 text-[11px] mono bg-surface-2 text-default border border-default rounded-md hover:border-cyan/40 cursor-pointer" aria-label="View diagnostics for rpi5-edge">Diag</button>
+                <button class="h-8 w-8 flex items-center justify-center text-muted hover:text-default hover:bg-surface-2 rounded-md cursor-pointer" aria-label="More actions for rpi5-edge">
+                  <svg class="h-4 w-4" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><circle cx="3" cy="8" r="1.25"/><circle cx="8" cy="8" r="1.25"/><circle cx="13" cy="8" r="1.25"/></svg>
+                </button>
+              </div>
+            </div>
+
+            <div class="mt-3 pt-3 border-t border-default flex items-center justify-between text-[10px] mono">
+              <div class="flex items-center gap-2 flex-wrap">
+                <span class="text-muted">supports:</span>
+                <span class="px-1.5 py-0.5 bg-surface-2 text-cyan border border-cyan/30 rounded">tinkr-rpi5 0.3.0</span>
+                <span class="px-1.5 py-0.5 bg-surface-2 text-cyan border border-cyan/30 rounded">argus-mcp 1.0.0</span>
+                <span class="px-1.5 py-0.5 bg-surface-2 text-cyan border border-cyan/30 rounded">ros2-bridge 0.1.4</span>
+              </div>
+              <span class="text-red flex items-center gap-1">
+                <svg class="h-3 w-3" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M8 2v6m0 3v.5" stroke-linecap="round"/><circle cx="8" cy="13" r="0.5" fill="currentColor"/></svg>
+                ETIMEDOUT · 1.4s
+              </span>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Footer of left pane: mock devices CTA -->
+        <div class="px-6 py-3 border-t border-default bg-surface-2 flex items-center justify-between">
+          <div class="text-[11px] mono text-muted">
+            Showing <span class="text-dim">4</span> of <span class="text-dim">4</span> devices. Plugin compatibility checked against <span class="text-cyan">tinkr-esp32@1.2.3</span>, <span class="text-cyan">tinkr-rp2040@0.9.4</span>, <span class="text-cyan">tinkr-nrf52@0.5.2</span>, <span class="text-cyan">tinkr-rpi5@0.3.0</span>.
+          </div>
+          <button class="text-[11px] mono text-cyan hover:text-cyan/80 flex items-center gap-1.5 cursor-pointer" aria-label="Add mock devices for testing the UI without real hardware">
+            <svg class="h-3.5 w-3.5" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M8 2v12M2 8h12" stroke-linecap="round"/></svg>
+            Mock devices for testing
+          </button>
+        </div>
+      </main>
+
+      <!-- ============ RIGHT: Device details slide-out panel ============ -->
+      <aside class="border-l border-default bg-surface flex flex-col overflow-hidden" aria-label="Device details: esp32s3-left">
+        <!-- Panel header -->
+        <div class="px-5 py-4 border-b border-default flex items-center justify-between">
+          <div>
+            <div class="text-[10px] mono uppercase tracking-widest text-cyan">device · online</div>
+            <h2 class="display text-lg font-semibold mt-0.5">esp32s3-left</h2>
+          </div>
+          <button class="h-7 w-7 flex items-center justify-center text-muted hover:text-default hover:bg-surface-2 rounded cursor-pointer" aria-label="Close details panel">
+            <svg class="h-4 w-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" stroke-linecap="round"/></svg>
+          </button>
+        </div>
+
+        <!-- Panel body -->
+        <div class="flex-1 overflow-y-auto scrollbar px-5 py-4 space-y-5">
+
+          <!-- Identity section -->
+          <section>
+            <div class="text-[10px] mono uppercase tracking-widest text-muted mb-2">identity</div>
+            <dl class="space-y-1.5 text-[12px]">
+              <div class="flex items-center justify-between">
+                <dt class="text-dim">Chip ID</dt>
+                <dd class="mono text-default">0x2B500A7C5E4</dd>
+              </div>
+              <div class="flex items-center justify-between">
+                <dt class="text-dim">MAC</dt>
+                <dd class="mono text-default">A4:CF:12:8E:33:91</dd>
+              </div>
+              <div class="flex items-center justify-between">
+                <dt class="text-dim">Flash size</dt>
+                <dd class="mono text-default">8 MB (Quad SPI)</dd>
+              </div>
+              <div class="flex items-center justify-between">
+                <dt class="text-dim">PSRAM</dt>
+                <dd class="mono text-default">2 MB (Octal SPI)</dd>
+              </div>
+              <div class="flex items-center justify-between">
+                <dt class="text-dim">USB PID:VID</dl>
+                <dd class="mono text-default">303A:4001</dd>
+              </div>
+            </dl>
+          </section>
+
+          <!-- Firmware section -->
+          <section>
+            <div class="text-[10px] mono uppercase tracking-widest text-muted mb-2">firmware</div>
+            <dl class="space-y-1.5 text-[12px]">
+              <div class="flex items-center justify-between">
+                <dt class="text-dim">Runtime</dt>
+                <dd class="mono text-cyan">MicroPython 1.24.1</dd>
+              </div>
+              <div class="flex items-center justify-between">
+                <dt class="text-dim">Built</dt>
+                <dd class="mono text-default">2024-08-12 · esp32s3</dd>
+              </div>
+              <div class="flex items-center justify-between">
+                <dt class="text-dim">Free heap</dt>
+                <dd class="mono text-green">184 KB / 320 KB</dd>
+              </div>
+              <div class="flex items-center justify-between">
+                <dt class="text-dim">Free flash</dt>
+                <dd class="mono text-default">1.4 MB / 8 MB</dd>
+              </div>
+              <div class="flex items-center justify-between">
+                <dt class="text-dim">Baud rate</dt>
+                <dd class="mono text-default">115200</dd>
+              </div>
+            </dl>
+          </section>
+
+          <!-- Last project -->
+          <section>
+            <div class="text-[10px] mono uppercase tracking-widest text-muted mb-2">last project</div>
+            <div class="bg-surface-2 border border-default rounded-md p-3">
+              <div class="flex items-center justify-between">
+                <span class="text-[13px] font-medium">kitchen-sensor</span>
+                <button class="text-[10px] mono text-cyan hover:text-cyan/80 cursor-pointer">open →</button>
+              </div>
+              <div class="text-[11px] mono text-dim mt-1">ESP32-S3 · MicroPython · last deployed <span class="text-default">2h ago</span></div>
+              <div class="text-[11px] mono text-muted mt-2 flex items-center gap-2">
+                <svg class="h-3 w-3" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M8 1l2 5h5l-4 3 1.5 5L8 11l-4.5 3L5 9 1 6h5z"/></svg>
+                pinned by <span class="text-cyan">ronie</span> on Aug 10
+              </div>
+            </div>
+          </section>
+
+          <!-- KB entries for this device -->
+          <section>
+            <div class="flex items-center justify-between mb-2">
+              <div class="text-[10px] mono uppercase tracking-widest text-muted">knowledge base · 14 entries</div>
+              <button class="text-[10px] mono text-cyan hover:text-cyan/80 cursor-pointer">view all →</button>
+            </div>
+            <div class="space-y-1.5">
+              <a href="05-kb-viewer.html" class="block bg-surface-2 border border-default rounded-md p-2.5 hover:border-cyan/40 cursor-pointer">
+                <div class="flex items-center gap-2">
+                  <span class="text-[9px] mono px-1 py-0.5 bg-cyan/15 text-cyan rounded">fact</span>
+                  <span class="text-[12px] truncate flex-1">esp32s3.bootloader_pitfall</span>
+                  <span class="text-[10px] mono text-green">0.94</span>
+                </div>
+                <div class="text-[11px] text-dim mt-0.5 truncate">GPIO 19/20 are strapping pins — don't tie low at boot.</div>
+              </a>
+              <a href="05-kb-viewer.html" class="block bg-surface-2 border border-default rounded-md p-2.5 hover:border-cyan/40 cursor-pointer">
+                <div class="flex items-center gap-2">
+                  <span class="text-[9px] mono px-1 py-0.5 bg-amber/15 text-amber rounded">recipe</span>
+                  <span class="text-[12px] truncate flex-1">esp32.bme280_address_probe</span>
+                  <span class="text-[10px] mono text-green">0.89</span>
+                </div>
+                <div class="text-[11px] text-dim mt-0.5 truncate">Slow I2C to 10 kHz first; 0x76/0x77 means wiring, not code.</div>
+              </a>
+              <a href="05-kb-viewer.html" class="block bg-surface-2 border border-default rounded-md p-2.5 hover:border-cyan/40 cursor-pointer">
+                <div class="flex items-center gap-2">
+                  <span class="text-[9px] mono px-1 py-0.5 bg-red/10 text-red rounded">fix</span>
+                  <span class="text-[12px] truncate flex-1">esp32s3.usb_jtag_brownout</span>
+                  <span class="text-[10px] mono text-amber">0.71</span>
+                </div>
+                <div class="text-[11px] text-dim mt-0.5 truncate">Brownouts on long USB cables — add 100µF cap on 3V3.</div>
+              </a>
+              <a href="05-kb-viewer.html" class="block bg-surface-2 border border-default rounded-md p-2.5 hover:border-cyan/40 cursor-pointer">
+                <div class="flex items-center gap-2">
+                  <span class="text-[9px] mono px-1 py-0.5 bg-magenta/15 text-magenta rounded">pattern</span>
+                  <span class="text-[12px] truncate flex-1">esp32.led_heartbeat_pattern</span>
+                  <span class="text-[10px] mono text-amber">0.66</span>
+                </div>
+                <div class="text-[11px] text-dim mt-0.5 truncate">200ms on, 1800ms off, on GPIO48 — most reliable.</div>
+              </a>
+            </div>
+          </section>
+
+          <!-- Plugins section -->
+          <section>
+            <div class="text-[10px] mono uppercase tracking-widest text-muted mb-2">compatible plugins</div>
+            <div class="space-y-1.5">
+              <div class="flex items-center justify-between bg-surface-2 border border-default rounded-md px-3 py-2">
+                <div>
+                  <div class="text-[12px] font-medium">tinkr-esp32</div>
+                  <div class="text-[10px] mono text-dim">espressif · first-party</div>
+                </div>
+                <span class="text-[11px] mono text-cyan">1.2.3</span>
+              </div>
+              <div class="flex items-center justify-between bg-surface-2 border border-default rounded-md px-3 py-2">
+                <div>
+                  <div class="text-[12px] font-medium">micropython-runtime</div>
+                  <div class="text-[10px] mono text-dim">espressif · first-party</div>
+                </div>
+                <span class="text-[11px] mono text-cyan">0.8.1</span>
+              </div>
+              <div class="flex items-center justify-between bg-surface-2 border border-default rounded-md px-3 py-2">
+                <div>
+                  <div class="text-[12px] font-medium">wifi-esp32</div>
+                  <div class="text-[10px] mono text-dim">community · @maryke</div>
+                </div>
+                <span class="text-[11px] mono text-cyan">0.4.0</span>
+              </div>
+            </div>
+          </section>
+
+        </div>
+
+        <!-- Panel footer: actions -->
+        <div class="px-5 py-3 border-t border-default bg-surface-2 space-y-2">
+          <div class="grid grid-cols-2 gap-2">
+            <button class="h-9 text-[12px] mono bg-cyan/15 text-cyan border border-cyan/40 rounded-md hover:bg-cyan/25 cursor-pointer">Connect</button>
+            <button class="h-9 text-[12px] mono bg-amber text-black font-semibold rounded-md hover:bg-amber/90 cursor-pointer">Flash firmware</button>
+          </div>
+          <div class="grid grid-cols-3 gap-2">
+            <button class="h-8 text-[11px] mono bg-surface border border-default rounded-md hover:border-cyan/40 cursor-pointer">REPL</button>
+            <button class="h-8 text-[11px] mono bg-surface border border-default rounded-md hover:border-cyan/40 cursor-pointer">Monitor</button>
+            <button class="h-8 text-[11px] mono bg-surface border border-default rounded-md hover:border-cyan/40 cursor-pointer">Forget</button>
+          </div>
+        </div>
+      </aside>
+    </div>
+
+    <!-- ====================== STATUS BAR ====================== -->
+    <div class="h-7 border-t border-default bg-surface-2 flex items-center px-2 text-[11px] mono select-none" role="status" aria-label="Status bar">
+      <button class="flex items-center gap-1 px-2 h-full hover:bg-surface cursor-pointer" aria-label="Git branch: main, clean">
+        <span class="text-cyan">⎇</span><span class="text-default">main</span>
+        <span class="text-green">✓</span>
+      </button>
+      <span class="h-3 w-px bg-default/10 mx-1"></span>
+      <button class="flex items-center gap-1 px-2 h-full hover:bg-surface cursor-pointer" aria-label="4 devices · 2 online">
+        <span class="h-1.5 w-1.5 rounded-full bg-green"></span>
+        <span class="text-default">2</span><span class="text-muted">/4 devices online</span>
+      </button>
+      <span class="h-3 w-px bg-default/10 mx-1"></span>
+      <span class="px-2 h-full flex items-center text-dim gap-2">
+        <span>default: <span class="text-cyan">esp32s3-left</span></span>
+      </span>
+      <div class="flex-1"></div>
+      <span class="px-2 text-muted">last scan: 12s ago · next: in 48s</span>
+      <span class="h-3 w-px bg-default/10 mx-1"></span>
+      <span class="px-2 text-muted">mcp · 2 sessions</span>
+      <span class="h-3 w-px bg-default/10 mx-1"></span>
+      <span class="px-2 text-muted">⌘⇧S scan · ⌘D deploy · ⌘R repl</span>
+    </div>
+  </div>
+
+  <!-- ====================== EMPTY STATE PREVIEW ====================== -->
+  <section class="bg-surface border border-default rounded-lg p-6">
+    <div class="text-xs mono uppercase tracking-widest text-cyan mb-3">empty state</div>
+    <h2 class="display text-xl font-semibold mb-1">Plug in your <span class="text-cyan">device</span>.</h2>
+    <p class="text-dim text-sm mb-6">When no hardware is detected, the list shows an illustration + one CTA. Hardware is physical — show the absence physically.</p>
+
+    <div class="bg-bg border border-default rounded-lg p-12 flex flex-col items-center justify-center text-center">
+      <!-- Inline SVG: unplugged board + cable -->
+      <svg viewBox="0 0 240 140" class="w-64 h-36 mb-6" aria-hidden="true">
+        <!-- Cable coming from left, disconnected -->
+        <path d="M0 80 L80 80" stroke="#3F3F46" stroke-width="2" stroke-linecap="round"/>
+        <rect x="76" y="74" width="10" height="12" rx="1" fill="none" stroke="#71717A" stroke-width="1.5"/>
+        <!-- Board outline -->
+        <rect x="110" y="40" width="110" height="60" rx="3" fill="none" stroke="#27272A" stroke-width="1.5" stroke-dasharray="4 3"/>
+        <text x="165" y="74" text-anchor="middle" fill="#52525B" font-size="10" font-family="JetBrains Mono" font-weight="500">no device</text>
+        <!-- USB port placeholder -->
+        <rect x="105" y="68" width="10" height="6" rx="1" fill="none" stroke="#27272A" stroke-width="1"/>
+        <!-- LED dots (off) -->
+        <circle cx="200" cy="50" r="2" fill="#27272A"/>
+        <circle cx="208" cy="50" r="2" fill="#27272A"/>
+        <!-- Dashed connection hint -->
+        <path d="M90 80 L105 80" stroke="#5EEAD4" stroke-width="1" stroke-dasharray="2 2" opacity="0.5"/>
+        <path d="M105 80 L108 78 M105 80 L108 82" stroke="#5EEAD4" stroke-width="1" opacity="0.5"/>
+      </svg>
+      <p class="text-default text-sm font-medium mb-1">No devices detected</p>
+      <p class="text-dim text-[12px] mb-5 max-w-sm">Plug in a board over USB, or click scan again if it's already connected.</p>
+      <button class="h-9 px-4 flex items-center gap-2 text-[12px] bg-amber text-black font-semibold rounded-md hover:bg-amber/90 cursor-pointer">
+        <svg class="h-4 w-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true">
+          <path d="M2 8a6 6 0 0 1 10.39-4.1M14 8a6 6 0 0 1-10.39 4.1" stroke-linecap="round"/>
+          <path d="M12.5 1.5v3h-3M3.5 14.5v-3h3" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        Scan for devices
+      </button>
+      <button class="text-[11px] mono text-cyan hover:text-cyan/80 mt-4 cursor-pointer">Mock devices for testing →</button>
+    </div>
+  </section>
+
+  <!-- ====================== DESIGN NOTES ====================== -->
+  <section class="grid grid-cols-1 md:grid-cols-3 gap-4">
+    <div class="bg-surface border border-default rounded-lg p-4">
+      <div class="text-xs mono uppercase tracking-wider text-cyan">layout</div>
+      <h3 class="display text-lg font-semibold mt-1">Card list, not table</h3>
+      <p class="text-dim text-sm mt-2">A scanned board is a rich object — chip model, port, last project, KB entries, plugin compatibility. A flat table would lose 60% of that. Cards carry: board SVG, name + chip + port, status badge, last-seen, action cluster, plugin-version compatibility strip.</p>
+    </div>
+    <div class="bg-surface border border-default rounded-lg p-4">
+      <div class="text-xs mono uppercase tracking-wider text-cyan">a11y</div>
+      <h3 class="display text-lg font-semibold mt-1">Color is never the only indicator</h3>
+      <p class="text-dim text-sm mt-2">Status badges combine color, text, and a leading icon (e.g. red badge + "Error" + ✕). The card list is a <code class="mono">role="listbox"</code>; arrow keys move selection, Enter opens the details panel, Escape closes it.</p>
+    </div>
+    <div class="bg-surface border border-default rounded-lg p-4">
+      <div class="text-xs mono uppercase tracking-wider text-cyan">brand</div>
+      <h3 class="display text-lg font-semibold mt-1">Amber = the action</h3>
+      <p class="text-dim text-sm mt-2">"Scan for devices" is the only amber element on the surface — the <em>ship it</em> color, reserved for the moment a user commits to a hardware workflow. The 4 device cards stay in the cyan/violet/status palette to keep the semantic meaning clear.</p>
+    </div>
+  </section>
+
+</div>
+
+<footer class="border-t border-default mt-12">
+  <div class="max-w-[1500px] mx-auto px-6 py-6 flex items-center justify-between text-xs mono text-muted">
+    <div>tinkr 0.5.0 mockup 06 — device manager</div>
+    <div class="flex items-center gap-4">
+      <a href="05-kb-viewer.html" class="hover:text-cyan">← kb viewer</a>
+      <a href="07-repl-monitor.html" class="hover:text-cyan">repl monitor →</a>
+    </div>
+  </div>
+</footer>
+
+<!--
+  ====================================================================
+  LIGHT MODE NOTES
+  ====================================================================
+  Uncomment the html.light block in :root and the page will render
+  light. The same color semantics hold: cyan = brand, amber = action,
+  violet = AI/agent, green = online, red = error, slate = chrome.
+  Card backgrounds become #FFFFFF on #FAFAFA canvas. Status badges
+  retain their hue but the "surface" variants lighten to -50
+  equivalents. The scan button stays amber — the "ship it" color
+  reads as well on light as on dark because it's high-contrast
+  (#FB923C on white = 3.4:1, but with bold black text inside it's
+  perceived as an action surface, not a wall of color).
+  ====================================================================
+-->
+
+</body>
+</html>

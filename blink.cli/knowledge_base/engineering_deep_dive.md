@@ -1,4 +1,4 @@
-# Blink CLI — Engineering Deep-Dive Knowledge Base
+# Tinkr CLI — Engineering Deep-Dive Knowledge Base
 
 > **Source**: Compiled from 4 specialized engineering research agents analyzing the Thonny codebase.
 > **Date**: 2026-08-11
@@ -45,7 +45,7 @@ pip install minny
 ### Status in Our Workspace
 - `../minny` directory does NOT exist in workspace
 - Must install from PyPI or clone the repo
-- **ACTION REQUIRED**: `pip install minny` or `git clone` the repo into `/Users/mindflow/Projects/Blink/minny`
+- **ACTION REQUIRED**: `pip install minny` or `git clone` the repo into `/Users/mindflow/Projects/Tinkr/minny`
 
 ---
 
@@ -318,10 +318,10 @@ def repr(cls, obj):
 │  ┌────────────────▼──────────────────────┐      │
 │  │     Python CLI Tool Orchestrator      │      │
 │  │  (for minny-dependent operations)     │      │
-│  │  - blink-repl-execute (via minny)     │      │
-│  │  - blink-fs-upload (via minny)        │      │
-│  │  - blink-pkg-install (via pipkin)     │      │
-│  │  - blink-ai-analyze (via ollama)      │      │
+│  │  - tinkr-repl-execute (via minny)     │      │
+│  │  - tinkr-fs-upload (via minny)        │      │
+│  │  - tinkr-pkg-install (via pipkin)     │      │
+│  │  - tinkr-ai-analyze (via ollama)      │      │
 │  └───────────────────────────────────────┘      │
 │                                                  │
 │  ┌───────────────────────────────────────┐      │
@@ -361,9 +361,9 @@ def repr(cls, obj):
 
 ### Manifest-Based Discovery (Recommended)
 ```json
-// ~/.blink/tools/blink-port-scan/manifest.json
+// ~/.tinkr/tools/tinkr-port-scan/manifest.json
 {
-    "name": "blink-port-scan",
+    "name": "tinkr-port-scan",
     "entrypoint": "main.py",
     "version": "0.1.0",
     "tier": 1,
@@ -377,7 +377,7 @@ def repr(cls, obj):
 
 ### Alternative: PATH Scanning
 ```bash
-# Rust discovers tools by scanning PATH for blink-* executables
+# Rust discovers tools by scanning PATH for tinkr-* executables
 # Each tool responds to --capabilities with a JSON manifest
-blink-port-scan --capabilities
+tinkr-port-scan --capabilities
 ```
