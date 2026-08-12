@@ -1,0 +1,142 @@
+"""Simple color logger for mpytool"""
+
+import os as _os
+import sys as _sys
+
+
+# Log levels (compatible with Python logging)
+DEBUG = 10
+INFO = 20
+WARNING = 30
+ERROR = 40
+
+class SimpleColorLogger():
+    # ANSI color codes
+    _RESET = '\033[0m'
+    _BOLD_RED = '\033[1;31m'
+    _BOLD_YELLOW = '\033[1;33m'
+    _BOLD_GREEN = '\033[1;32m'
+    _BOLD_CYAN = '\033[1;36m'
+    _BOLD_BLUE = '\033[1;34m'
+    _BOLD_MAGENTA = '\033[1;35m'
+    _CLEAR_LINE = '\033[K'
+
+    # Color names for verbose()
+    COLORS = {
+        'red': _BOLD_RED,
+        'yellow': _BOLD_YELLOW,
+        'magenta': _BOLD_MAGENTA,
+        'blue': _BOLD_BLUE,
+        'green': _BOLD_GREEN,
+        'cyan': _BOLD_CYAN,
+    }
+
+    def __init__(self, loglevel=WARNING, verbose_level=0):
+        self._loglevel = loglevel
+        self._verbose_level = verbose_level
+        self._is_tty = _sys.stderr.isatty()
+        self._color = (
+            self._is_tty
+            and _os.environ.get('NO_COLOR') is None
+            and _os.environ.get('TERM') != 'dumb'
+            and _os.environ.get('CI') is None
+            and (_sys.platform != 'win32' or _os.environ.get('TERM'))
+        )
+        self._pending_line = False  # True when last output had no trailing newline
+
+    @property
+    def loglevel(self):
+        """Return current log level (DEBUG=10, INFO=20, WARNING=30, ERROR=40)"""
+        return self._loglevel
+
+    @property
+    def is_debug(self):
+        """True if debug messages are enabled"""
+        return self._loglevel <= DEBUG
+
+    @property
+    def is_info(self):
+        """True if info messages are enabled"""
+        return self._loglevel <= INFO
+
+    @property
+    def is_warning(self):
+        """True if warning messages are enabled"""
+        return self._loglevel <= WARNING
+
+    def colorize(self, text, color):
+        """Return text wrapped in color codes if colors are enabled"""
+        if not self._color:
+            return text
+        color_code = self.COLORS.get(color, '')
+        if not color_code:
+            return text
+        return f"{color_code}{text}{self._RESET}"
+
+    def _clear_pending(self):
+        """End pending progress line before printing a new message"""
+        if self._pending_line:
+            # Use \r\n for TTY to handle raw terminal mode (REPL)
+            print(file=_sys.stderr, end='\r\n' if self._is_tty else '\n')
+            self._pending_line = False
+
+    def log(self, msg):
+        self._clear_pending()
+        # Use \r\n for TTY to handle raw terminal mode (REPL)
+        print(msg, file=_sys.stderr, end='\r\n' if self._is_tty else '\n')
+
+    def error(self, msg, *args):
+        if args:
+            msg = msg % args
+        if self._loglevel <= ERROR:
+            if self._color:
+                self.log(f"{self._BOLD_RED}{msg}{self._RESET}")
+            else:
+                self.log(f"E: {msg}")
+
+    def warning(self, msg, *args):
+        if args:
+            msg = msg % args
+        if self._loglevel <= WARNING:
+            if self._color:
+                self.log(f"{self._BOLD_YELLOW}{msg}{self._RESET}")
+            else:
+                self.log(f"W: {msg}")
+
+    def info(self, msg, *args):
+        if args:
+            msg = msg % args
+        if self._loglevel <= INFO:
+            if self._color:
+                self.log(f"{self._BOLD_MAGENTA}{msg}{self._RESET}")
+            else:
+                self.log(f"I: {msg}")
+
+    def debug(self, msg, *args):
+        if args:
+            msg = msg % args
+        if self._loglevel <= DEBUG:
+            if self._color:
+                self.log(f"{self._BOLD_BLUE}{msg}{self._RESET}")
+            else:
+                self.log(f"D: {msg}")
+
+    def verbose(self, msg, level=1, color='green', end='\n', overwrite=False):
+        """Print verbose message if verbose_level >= level"""
+        if self._verbose_level < level:
+            return
+        # Skip progress updates (overwrite without newline) in non-TTY mode
+        if overwrite and not self._is_tty and end != '\n':
+            return
+        if not overwrite:
+            self._clear_pending()
+        if color is None:
+            # No wrapper color - message may contain embedded colors
+            color_code = ''
+            reset_code = self._RESET if self._color else ''
+        else:
+            color_code = self.COLORS.get(color, self._BOLD_GREEN) if self._color else ''
+            reset_code = self._RESET if self._color else ''
+        clear = f'\r{self._CLEAR_LINE}' if self._color and overwrite else ('\r' if self._is_tty and overwrite else '')
+        print(f"{clear}{color_code}{msg}{reset_code}", end=end, file=_sys.stderr, flush=True)
+        self._pending_line = (end != '\n')

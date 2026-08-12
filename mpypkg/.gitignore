@@ -1,0 +1,7 @@
+__pycache__
+/build
+/docs/*/
+!/docs/images
+/docs/*.bkp
+/tests
+/examples/config.py

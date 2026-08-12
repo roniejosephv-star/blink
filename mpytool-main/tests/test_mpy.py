@@ -1,0 +1,1167 @@
+"""Tests for mpy module"""
+
+import base64
+import unittest
+from unittest.mock import Mock, patch
+from mpytool.mpy import _escape_path, Mpy
+import mpytool.mpy_comm as mpy_comm
+
+
+class TestEscapePath(unittest.TestCase):
+    """Tests for _escape_path function
+
+    Based on mpremote issues:
+    - #18657: apostrophe in filename
+    - #18658: equals sign in filename
+    """
+    def test_no_escape_needed(self):
+        self.assertEqual(_escape_path("simple.txt"), "simple.txt")
+        self.assertEqual(_escape_path("/path/to/file"), "/path/to/file")
+
+    def test_escape_apostrophe(self):
+        # mpremote issue #18657
+        self.assertEqual(_escape_path("file's.txt"), "file\\'s.txt")
+        self.assertEqual(_escape_path("it's a file"), "it\\'s a file")
+
+    def test_escape_backslash(self):
+        self.assertEqual(_escape_path("path\\file"), "path\\\\file")
+
+    def test_escape_both(self):
+        self.assertEqual(_escape_path("it's\\here"), "it\\'s\\\\here")
+
+    def test_multiple_apostrophes(self):
+        self.assertEqual(_escape_path("a'b'c"), "a\\'b\\'c")
+
+    def test_equals_sign_no_escape_needed(self):
+        # mpremote issue #18658 - equals sign should work without escape
+        self.assertEqual(_escape_path("file=value.txt"), "file=value.txt")
+        self.assertEqual(_escape_path("a=b=c.txt"), "a=b=c.txt")
+
+    def test_spaces_no_escape_needed(self):
+        # Spaces don't need escaping in Python string literals
+        self.assertEqual(_escape_path("file with spaces.txt"), "file with spaces.txt")
+        self.assertEqual(_escape_path("/path/to/my file.txt"), "/path/to/my file.txt")
+
+    def test_unicode_no_escape_needed(self):
+        # Unicode characters don't need escaping
+        self.assertEqual(_escape_path("súbor.txt"), "súbor.txt")
+        self.assertEqual(_escape_path("文件.txt"), "文件.txt")
+        self.assertEqual(_escape_path("ファイル.txt"), "ファイル.txt")
+
+    def test_special_chars_combination(self):
+        # Combination of special characters
+        self.assertEqual(
+            _escape_path("it's a file=test.txt"),
+            "it\\'s a file=test.txt"
+        )
+
+    def test_double_quotes_no_escape_needed(self):
+        # Double quotes don't need escaping in single-quoted strings
+        self.assertEqual(_escape_path('file"name.txt'), 'file"name.txt')
+
+
+class TestFileInfo(unittest.TestCase):
+    """Tests for Mpy.fileinfo method"""
+
+    def setUp(self):
+        self.mock_conn = Mock()
+        self.mpy = Mpy(self.mock_conn)
+        self.mpy._mpy_comm = Mock()
+
+    def test_fileinfo_returns_dict(self):
+        """Test that fileinfo returns dictionary from device"""
+        # Device returns base64 encoded hashes
+        device_response = {
+            "/a.txt": (100, base64.b64encode(b"hash_a")),
+            "/b.txt": (200, base64.b64encode(b"hash_b")),
+        }
+        expected = {
+            "/a.txt": (100, b"hash_a"),
+            "/b.txt": (200, b"hash_b"),
+        }
+        self.mpy._mpy_comm.exec_eval.return_value = device_response
+        result = self.mpy.fileinfo({"/a.txt": 100, "/b.txt": 200})
+        self.assertEqual(result, expected)
+
+    def test_fileinfo_escapes_paths(self):
+        """Test that paths are escaped in the command"""
+        self.mpy._mpy_comm.exec_eval.return_value = {}
+        self.mpy.fileinfo({"/file's.txt": 100})
+        call_args = self.mpy._mpy_comm.exec_eval.call_args
+        # Check that escaped path is in the command (backslash before apostrophe)
+        self.assertIn("file\\\\'s.txt", call_args[0][0])
+
+    def test_fileinfo_timeout_scales_with_files(self):
+        """Test that timeout scales with number of files"""
+        self.mpy._mpy_comm.exec_eval.return_value = {}
+        files = {f"/file{i}.txt": 100 for i in range(10)}
+        self.mpy.fileinfo(files)
+        call_args = self.mpy._mpy_comm.exec_eval.call_args
+        # timeout = 5 + 10 * 0.5 = 10
+        self.assertEqual(call_args[1]["timeout"], 10.0)
+
+    def test_fileinfo_returns_none_on_error(self):
+        """Test that fileinfo returns None when device raises error"""
+        self.mpy._mpy_comm.exec_eval.side_effect = mpy_comm.CmdError("cmd", b"", b"error")
+        result = self.mpy.fileinfo({"/a.txt": 100})
+        self.assertIsNone(result)
+
+    def test_fileinfo_loads_helper(self):
+        """Test that fileinfo loads required helper"""
+        self.mpy._mpy_comm.exec_eval.return_value = {}
+        self.mpy.fileinfo({"/a.txt": 100})
+        # Check that helper was loaded (exec called with helper code)
+        exec_calls = [str(c) for c in self.mpy._mpy_comm.exec.call_args_list]
+        helper_loaded = any("_mt_finfo" in c for c in exec_calls)
+        self.assertTrue(helper_loaded)
+
+    def test_fileinfo_passes_sizes(self):
+        """Test that expected sizes are passed to device"""
+        self.mpy._mpy_comm.exec_eval.return_value = {}
+        self.mpy.fileinfo({"/a.txt": 100, "/b.txt": 200})
+        call_args = self.mpy._mpy_comm.exec_eval.call_args
+        # Check that sizes are in the command
+        self.assertIn("100", call_args[0][0])
+        self.assertIn("200", call_args[0][0])
+
+
+class TestChunkSize(unittest.TestCase):
+    """Tests for Mpy.chunk_size property (auto-detection based on RAM)"""
+
+    def setUp(self):
+        self.mock_conn = Mock()
+        self.mpy = Mpy(self.mock_conn)
+        self.mpy._mpy_comm = Mock()
+
+    def test_formula_free_kb_squared_div_2(self):
+        """Test chunk_size uses formula: free_kb² // 2"""
+        # 100KB free → 100² // 2 = 5000
+        self.mpy._mpy_comm.exec_eval.return_value = 100 * 1024
+        self.assertEqual(self.mpy.chunk_size, 5000)
+
+    def test_clamp_max_32k(self):
+        """Test chunk_size is clamped to 32KB max"""
+        # 350KB → 350² // 2 = 61250, clamped to 32768
+        self.mpy._mpy_comm.exec_eval.return_value = 350 * 1024
+        self.assertEqual(self.mpy.chunk_size, 32768)
+
+    def test_clamp_min_256(self):
+        """Test chunk_size is clamped to 256B min"""
+        # 10KB → 10² // 2 = 50, clamped to 256
+        self.mpy._mpy_comm.exec_eval.return_value = 10 * 1024
+        self.assertEqual(self.mpy.chunk_size, 256)
+
+    def test_error_defaults_to_256(self):
+        """Test that errors default to 256B chunks"""
+        from mpytool.mpy_comm import CmdError
+        self.mpy._mpy_comm.exec_eval.side_effect = CmdError("cmd", b"", b"error")
+        self.assertEqual(self.mpy.chunk_size, 256)
+
+    def test_caches_result(self):
+        """Test that chunk size is cached after first detection"""
+        self.mpy._mpy_comm.exec_eval.return_value = 100 * 1024
+        chunk1 = self.mpy.chunk_size
+        # Change return value - should still use cached
+        self.mpy._mpy_comm.exec_eval.return_value = 200 * 1024
+        chunk2 = self.mpy.chunk_size
+        self.assertEqual(chunk1, chunk2)
+
+    def test_user_specified_skips_detection(self):
+        """Test that user-specified chunk size skips auto-detection"""
+        mpy = Mpy(self.mock_conn, chunk_size=4096)
+        mpy._mpy_comm = Mock()
+        self.assertEqual(mpy.chunk_size, 4096)
+        # exec_eval should not be called (no RAM detection)
+        mpy._mpy_comm.exec_eval.assert_not_called()
+
+
+class TestEncodeChunk(unittest.TestCase):
+    """Tests for Mpy._encode_chunk method"""
+
+    def setUp(self):
+        self.mock_conn = Mock()
+        self.mpy = Mpy(self.mock_conn)
+
+    def test_printable_ascii_uses_raw(self):
+        """Test that printable ASCII uses raw repr (shorter)"""
+        chunk = b"Hello World"
+        cmd, size, enc_type = self.mpy._encode_chunk(chunk)
+        self.assertEqual(size, 11)
+        self.assertEqual(enc_type, 'raw')
+        # Raw repr is shorter for printable ASCII
+        self.assertEqual(cmd, repr(chunk))
+
+    def test_binary_data_uses_base64(self):
+        """Test that binary data with many escapes uses base64"""
+        # All zeros - each byte would be \x00 (4 chars) in raw
+        chunk = b"\x00" * 100
+        cmd, size, enc_type = self.mpy._encode_chunk(chunk)
+        self.assertEqual(size, 100)
+        self.assertEqual(enc_type, 'base64')
+        # Base64 should be chosen (shorter than 400 chars of \x00\x00...)
+        self.assertIn("ub.a2b_base64", cmd)
+
+    def test_returns_correct_original_size(self):
+        """Test that original chunk size is returned"""
+        chunk = b"test data"
+        cmd, size, enc_type = self.mpy._encode_chunk(chunk)
+        self.assertEqual(size, len(chunk))
+
+    def test_compression_option(self):
+        """Test that compression is tried when enabled"""
+        # Highly compressible data
+        chunk = b"A" * 500
+        cmd, size, enc_type = self.mpy._encode_chunk(chunk, compress=True)
+        self.assertEqual(size, 500)
+        self.assertEqual(enc_type, 'compressed')
+        # Should use deflate (much smaller than raw or base64)
+        self.assertIn("df.DeflateIO", cmd)
+
+    def test_compression_not_used_for_incompressible(self):
+        """Test that compression is not used when data doesn't compress well"""
+        # Random-ish binary data that doesn't compress
+        import os
+        chunk = os.urandom(100)
+        cmd, size, enc_type = self.mpy._encode_chunk(chunk, compress=True)
+        # Should not use deflate (compression overhead makes it larger)
+        self.assertNotIn("df.DeflateIO", cmd)
+        self.assertIn(enc_type, ('raw', 'base64'))
+
+
+class TestPut(unittest.TestCase):
+    """Tests for Mpy.put method"""
+
+    def setUp(self):
+        self.mock_conn = Mock()
+        self.mpy = Mpy(self.mock_conn, chunk_size=512)
+        self.mpy._mpy_comm = Mock()
+        self.mpy._mpy_comm.exec_eval.return_value = 512  # Bytes written
+
+    def test_returns_encodings_and_wire_bytes(self):
+        """Test that put returns encodings set and wire bytes"""
+        data = b"Hello World"
+        self.mpy._mpy_comm.exec_eval.return_value = len(data)
+        encodings, wire_bytes = self.mpy.put(data, "/test.txt")
+        self.assertIsInstance(encodings, set)
+        self.assertIsInstance(wire_bytes, int)
+        self.assertGreater(wire_bytes, 0)
+
+    def test_raw_encoding_for_text(self):
+        """Test that text data uses raw encoding"""
+        data = b"Hello World"
+        self.mpy._mpy_comm.exec_eval.return_value = len(data)
+        encodings, _ = self.mpy.put(data, "/test.txt")
+        self.assertIn('raw', encodings)
+
+    def test_base64_encoding_for_binary(self):
+        """Test that binary data uses base64 or compressed encoding"""
+        data = b"\x00" * 100
+        self.mpy._mpy_comm.exec_eval.return_value = len(data)
+        encodings, _ = self.mpy.put(data, "/test.bin")
+        # Binary data uses base64 or compressed (if deflate available)
+        self.assertTrue('base64' in encodings or 'compressed' in encodings)
+
+    def test_compressed_encoding_when_enabled(self):
+        """Test that compressible data uses compressed encoding"""
+        data = b"A" * 1000  # Highly compressible
+        self.mpy._mpy_comm.exec_eval.return_value = len(data)
+        encodings, _ = self.mpy.put(data, "/test.txt", compress=True)
+        self.assertIn('compressed', encodings)
+
+    def test_wire_bytes_less_than_data_with_compression(self):
+        """Test that wire bytes are less than data size with compression"""
+        data = b"A" * 1000  # Highly compressible
+        self.mpy._mpy_comm.exec_eval.return_value = len(data)
+        _, wire_bytes = self.mpy.put(data, "/test.txt", compress=True)
+        # Wire bytes should be significantly less due to compression
+        # (accounting for command overhead)
+        self.assertLess(wire_bytes, len(data))
+
+    def test_wire_bytes_includes_command_overhead(self):
+        """Test that wire bytes include f.write() command overhead"""
+        data = b"x"  # Single byte
+        self.mpy._mpy_comm.exec_eval.return_value = 1
+        _, wire_bytes = self.mpy.put(data, "/test.txt")
+        # Should include 9 bytes overhead for "f.write(" + ")"
+        self.assertGreater(wire_bytes, len(repr(data)))
+
+    def test_progress_callback_called(self):
+        """Test that progress callback is called during transfer"""
+        data = b"Hello World"
+        self.mpy._mpy_comm.exec_eval.return_value = len(data)
+        callback = Mock()
+        self.mpy.put(data, "/test.txt", progress_callback=callback)
+        callback.assert_called()
+
+
+class TestFlashReadWithLabel(unittest.TestCase):
+    """Tests for Mpy.flash_read with label (ESP32 partition)"""
+
+    def setUp(self):
+        self.mock_conn = Mock()
+        self.mpy = Mpy(self.mock_conn)
+        self.mpy._mpy_comm = Mock()
+        self.mpy._platform = 'esp32'  # Set platform for partition operations
+        self.mpy._chunk_size = 4096  # Skip chunk size detection
+
+    def test_flash_read_with_label_returns_bytes(self):
+        """Test that flash_read with label returns bytes"""
+        # Mock partition info (type, subtype, offset, size, label, encrypted)
+        self.mpy._mpy_comm.exec_eval.side_effect = [
+            (0, 0, 0x10000, 4096, 'test', False),  # partition info
+            base64.b64encode(b'\xff' * 4096).decode()  # base64 data
+        ]
+        result = self.mpy.flash_read(label='test')
+        self.assertIsInstance(result, bytes)
+        self.assertEqual(len(result), 4096)
+
+    def test_flash_read_with_label_raises_on_not_found(self):
+        """Test that flash_read with label raises error if partition not found"""
+        self.mpy._mpy_comm.exec_eval.side_effect = mpy_comm.CmdError("cmd", b"", b"error")
+        with self.assertRaises(mpy_comm.MpyError):
+            self.mpy.flash_read(label='nonexistent')
+
+    def test_flash_read_with_label_calls_progress_callback(self):
+        """Test that progress callback is called during read"""
+        self.mpy._mpy_comm.exec_eval.side_effect = [
+            (0, 0, 0x10000, 4096, 'test', False),
+            base64.b64encode(b'\xff' * 4096).decode()
+        ]
+        callback = Mock()
+        self.mpy.flash_read(label='test', progress_callback=callback)
+        callback.assert_called()
+
+    def test_flash_read_with_label_requires_esp32(self):
+        """Test that flash_read with label requires ESP32 platform"""
+        self.mpy._platform = 'rp2'
+        with self.assertRaises(mpy_comm.MpyError) as ctx:
+            self.mpy.flash_read(label='test')
+        self.assertIn('ESP32', str(ctx.exception))
+
+
+class TestFlashWriteWithLabel(unittest.TestCase):
+    """Tests for Mpy.flash_write with label (ESP32 partition)"""
+
+    def setUp(self):
+        self.mock_conn = Mock()
+        self.mpy = Mpy(self.mock_conn)
+        self.mpy._mpy_comm = Mock()
+        self.mpy._platform = 'esp32'  # Set platform for partition operations
+        self.mpy._chunk_size = 4096  # Set chunk size to avoid detection
+        # Mock partition info
+        self.mpy._mpy_comm.exec_eval.return_value = (0, 0, 0x10000, 8192, 'test', False)
+
+    def test_flash_write_with_label_returns_dict(self):
+        """Test that flash_write with label returns result dict"""
+        data = b'\xff' * 4096
+        result = self.mpy.flash_write(data, label='test')
+        self.assertIsInstance(result, dict)
+        self.assertIn('size', result)
+        self.assertIn('written', result)
+        self.assertIn('wire_bytes', result)
+        self.assertIn('compressed', result)
+
+    def test_flash_write_with_label_raises_on_too_large(self):
+        """Test that flash_write with label raises error if data too large"""
+        # Partition is 8192 bytes, try to write 16384
+        data = b'\xff' * 16384
+        with self.assertRaises(mpy_comm.MpyError):
+            self.mpy.flash_write(data, label='test')
+
+    def test_flash_write_with_label_raises_on_not_found(self):
+        """Test that flash_write with label raises error if partition not found"""
+        self.mpy._mpy_comm.exec_eval.side_effect = mpy_comm.CmdError("cmd", b"", b"error")
+        with self.assertRaises(mpy_comm.MpyError):
+            self.mpy.flash_write(b'data', label='nonexistent')
+
+    def test_flash_write_with_label_calls_progress_callback(self):
+        """Test that progress callback is called during write"""
+        data = b'\xff' * 4096
+        callback = Mock()
+        self.mpy.flash_write(data, label='test', progress_callback=callback)
+        callback.assert_called()
+
+    def test_flash_write_with_label_requires_esp32(self):
+        """Test that flash_write with label requires ESP32 platform"""
+        self.mpy._platform = 'rp2'
+        with self.assertRaises(mpy_comm.MpyError) as ctx:
+            self.mpy.flash_write(b'data', label='test')
+        self.assertIn('ESP32', str(ctx.exception))
+
+
+class TestGetcwd(unittest.TestCase):
+    """Tests for Mpy.getcwd method"""
+
+    def setUp(self):
+        self.mock_conn = Mock()
+        self.mpy = Mpy(self.mock_conn)
+        self.mpy._mpy_comm = Mock()
+
+    def test_getcwd_returns_string(self):
+        """Test that getcwd returns current directory string"""
+        self.mpy._mpy_comm.exec_eval.return_value = '/'
+        result = self.mpy.getcwd()
+        self.assertEqual(result, '/')
+
+    def test_getcwd_returns_subdirectory(self):
+        """Test that getcwd returns subdirectory path"""
+        self.mpy._mpy_comm.exec_eval.return_value = '/lib'
+        result = self.mpy.getcwd()
+        self.assertEqual(result, '/lib')
+
+    def test_getcwd_calls_os_getcwd(self):
+        """Test that getcwd calls os.getcwd()"""
+        self.mpy._mpy_comm.exec_eval.return_value = '/'
+        self.mpy.getcwd()
+        call_args = self.mpy._mpy_comm.exec_eval.call_args[0][0]
+        self.assertIn('os.getcwd()', call_args)
+
+    def test_getcwd_imports_os(self):
+        """Test that getcwd imports os module"""
+        self.mpy._mpy_comm.exec_eval.return_value = '/'
+        self.mpy.getcwd()
+        exec_calls = [str(c) for c in self.mpy._mpy_comm.exec.call_args_list]
+        os_imported = any('import os' in c for c in exec_calls)
+        self.assertTrue(os_imported)
+
+
+class TestChdir(unittest.TestCase):
+    """Tests for Mpy.chdir method"""
+
+    def setUp(self):
+        self.mock_conn = Mock()
+        self.mpy = Mpy(self.mock_conn)
+        self.mpy._mpy_comm = Mock()
+
+    def test_chdir_calls_os_chdir(self):
+        """Test that chdir calls os.chdir() with path"""
+        self.mpy.chdir('/lib')
+        call_args = self.mpy._mpy_comm.exec.call_args_list[-1][0][0]
+        self.assertIn("os.chdir('/lib')", call_args)
+
+    def test_chdir_escapes_path(self):
+        """Test that chdir escapes special characters in path"""
+        self.mpy.chdir("/it's")
+        call_args = self.mpy._mpy_comm.exec.call_args_list[-1][0][0]
+        self.assertIn("it\\'s", call_args)
+
+    def test_chdir_imports_os(self):
+        """Test that chdir imports os module"""
+        self.mpy.chdir('/lib')
+        exec_calls = [str(c) for c in self.mpy._mpy_comm.exec.call_args_list]
+        os_imported = any('import os' in c for c in exec_calls)
+        self.assertTrue(os_imported)
+
+    def test_chdir_raises_on_not_found(self):
+        """Test that chdir raises DirNotFound on invalid path"""
+        from mpytool.mpy import DirNotFound
+
+        def exec_side_effect(cmd, *args, **kwargs):
+            if 'os.chdir' in cmd:
+                raise mpy_comm.CmdError("cmd", b"", b"OSError")
+            return None
+
+        self.mpy._mpy_comm.exec.side_effect = exec_side_effect
+        with self.assertRaises(DirNotFound):
+            self.mpy.chdir('/nonexistent')
+
+    def test_chdir_to_root(self):
+        """Test that chdir to root works"""
+        self.mpy.chdir('/')
+        call_args = self.mpy._mpy_comm.exec.call_args_list[-1][0][0]
+        self.assertIn("os.chdir('/')", call_args)
+
+    def test_chdir_to_relative_path(self):
+        """Test that chdir to relative path works"""
+        self.mpy.chdir('lib')
+        call_args = self.mpy._mpy_comm.exec.call_args_list[-1][0][0]
+        self.assertIn("os.chdir('lib')", call_args)
+
+    def test_chdir_to_parent(self):
+        """Test that chdir to parent directory works"""
+        self.mpy.chdir('..')
+        call_args = self.mpy._mpy_comm.exec.call_args_list[-1][0][0]
+        self.assertIn("os.chdir('..')", call_args)
+
+
+class TestWipe(unittest.TestCase):
+    """Tests for Mpy.wipe method"""
+
+    def setUp(self):
+        self.mock_conn = Mock()
+        self.mpy = Mpy(self.mock_conn)
+        self.mpy._mpy_comm = Mock()
+        # wipe orchestrates ls/delete/machine_reset; stub them to verify flow
+        self.mpy.ls = Mock(return_value=[])
+        self.mpy.delete = Mock()
+        self.mpy.machine_reset = Mock(return_value=True)
+
+    def test_wipe_deletes_all_root_entries(self):
+        """wipe deletes every root entry using an absolute path"""
+        self.mpy.ls.return_value = [('lib', None), ('boot.py', 42)]
+        self.mpy.wipe()
+        self.mpy.ls.assert_called_once_with('/')
+        self.mpy.delete.assert_any_call('/lib')
+        self.mpy.delete.assert_any_call('/boot.py')
+        self.assertEqual(self.mpy.delete.call_count, 2)
+
+    def test_wipe_machine_resets_with_args(self):
+        """wipe forwards reconnect/timeout to machine_reset"""
+        result = self.mpy.wipe(reconnect=True, timeout=5)
+        self.mpy.machine_reset.assert_called_once_with(
+            reconnect=True, timeout=5)
+        self.assertTrue(result)
+
+    def test_wipe_empty_filesystem_still_resets(self):
+        """wipe on empty FS deletes nothing but still resets"""
+        self.mpy.machine_reset.return_value = False
+        result = self.mpy.wipe(reconnect=False)
+        self.mpy.delete.assert_not_called()
+        self.mpy.machine_reset.assert_called_once_with(
+            reconnect=False, timeout=None)
+        self.assertFalse(result)
+
+    def test_wipe_invokes_on_delete_callback(self):
+        """on_delete is called with each path before deletion"""
+        self.mpy.ls.return_value = [('a.py', 1), ('b.py', 2)]
+        seen = []
+        self.mpy.wipe(on_delete=seen.append)
+        self.assertEqual(seen, ['/a.py', '/b.py'])
+
+    def test_wipe_deletes_before_reset(self):
+        """all deletes happen before the machine reset"""
+        calls = []
+        self.mpy.ls.return_value = [('x', 1)]
+        self.mpy.delete.side_effect = lambda p: calls.append(('del', p))
+        self.mpy.machine_reset.side_effect = (
+            lambda **k: calls.append(('reset',)) or True)
+        self.mpy.wipe()
+        self.assertEqual(calls, [('del', '/x'), ('reset',)])
+
+
+class TestExecSubmitOnly(unittest.TestCase):
+    """Tests for exec() and exec_raw_paste() with timeout=0 (submit only)"""
+
+    def setUp(self):
+        self.mock_conn = Mock()
+        # enter_raw_repl needs read_until to return
+        self.mock_conn.read_until.return_value = b''
+        self.mock_conn.flush.return_value = None
+        self.comm = mpy_comm.MpyComm(self.mock_conn)
+        # Skip stop_current_operation / enter_raw_repl negotiation
+        self.comm._repl_mode = True
+
+    def test_exec_timeout_zero_returns_empty(self):
+        """exec(cmd, timeout=0) returns b'' without reading output"""
+        result = self.comm.exec("print('hello')", timeout=0)
+        self.assertEqual(result, b'')
+
+    def test_exec_timeout_zero_sets_repl_mode_false(self):
+        """exec(cmd, timeout=0) sets _repl_mode = False"""
+        self.comm.exec("print('hello')", timeout=0)
+        self.assertFalse(self.comm._repl_mode)
+
+    def test_exec_timeout_zero_sends_code(self):
+        """exec(cmd, timeout=0) still sends the code + CTRL_D"""
+        self.comm.exec("print('hello')", timeout=0)
+        writes = [c[0][0] for c in self.mock_conn.write.call_args_list]
+        self.assertIn(b"print('hello')", writes)
+        self.assertIn(mpy_comm.CTRL_D, writes)
+
+    def test_exec_timeout_zero_uses_send_timeout(self):
+        """exec(cmd, timeout=0) uses send_timeout=5 for read_until OK"""
+        self.comm.exec("x=1", timeout=0)
+        # read_until(b'OK', 5) should have been called
+        ok_call = self.mock_conn.read_until.call_args_list[0]
+        self.assertEqual(ok_call[0], (b'OK', 5))
+
+    def test_exec_raw_paste_timeout_zero_returns_empty(self):
+        """exec_raw_paste(cmd, timeout=0) returns b'' without reading output"""
+        # Mock raw-paste handshake: R + status=1 + window_size + CTRL_D echo
+        self.mock_conn.read_bytes.side_effect = [
+            (ord('R'), 1),       # header + status
+            b'\x00\x01',         # window size = 256
+            mpy_comm.CTRL_D,     # CTRL_D echo after send
+        ]
+        self.mock_conn._has_data.return_value = False
+        result = self.comm.exec_raw_paste(b"print('hello')", timeout=0)
+        self.assertEqual(result, b'')
+
+    def test_exec_raw_paste_timeout_zero_sets_repl_mode_false(self):
+        """exec_raw_paste(cmd, timeout=0) sets _repl_mode = False"""
+        self.mock_conn.read_bytes.side_effect = [
+            (ord('R'), 1),
+            b'\x00\x01',
+            mpy_comm.CTRL_D,
+        ]
+        self.mock_conn._has_data.return_value = False
+        self.comm.exec_raw_paste(b"x=1", timeout=0)
+        self.assertFalse(self.comm._repl_mode)
+
+    def test_try_raw_paste_timeout_zero_returns_empty(self):
+        """try_raw_paste(cmd, timeout=0) passes timeout=0 through"""
+        self.mock_conn.read_bytes.side_effect = [
+            (ord('R'), 1),
+            b'\x00\x01',
+            mpy_comm.CTRL_D,
+        ]
+        self.mock_conn._has_data.return_value = False
+        result = self.comm.try_raw_paste(b"print(1)", timeout=0)
+        self.assertEqual(result, b'')
+
+    def test_try_raw_paste_timeout_zero_fallback_exec(self):
+        """try_raw_paste falls back to exec when raw-paste not supported"""
+        self.comm._raw_paste_supported = False
+        result = self.comm.try_raw_paste("print(1)", timeout=0)
+        self.assertEqual(result, b'')
+        self.assertFalse(self.comm._repl_mode)
+
+
+class TestExecStream(unittest.TestCase):
+    """Tests for exec() stream parameter (False, True, file-like object)"""
+
+    def setUp(self):
+        self.mock_conn = Mock()
+        self.mock_conn.read_until.return_value = b''
+        self.mock_conn.flush.return_value = None
+        self.comm = mpy_comm.MpyComm(self.mock_conn)
+        self.comm._repl_mode = True
+
+    def _setup_exec_response(self, stdout_data, stderr_data=b''):
+        """Configure mock_conn.read_until to return stdout then stderr."""
+        self.mock_conn.read_until.side_effect = [
+            b'',           # read_until(b'OK')
+            stdout_data,   # read_until(CTRL_D) - stdout
+            stderr_data,   # read_until(CTRL_D + b'>') - stderr
+        ]
+
+    def _setup_stream_buffer(self, data):
+        """Configure mock_conn._buffer for streaming reads.
+
+        Simulates data arriving in _buffer, terminated by CTRL_D + CTRL_D>.
+        """
+        buf = bytearray(data + mpy_comm.CTRL_D)
+        self.mock_conn._buffer = buf
+        self.mock_conn._read_to_buffer.return_value = False
+        # After stdout CTRL_D is consumed, read_until for stderr
+        self.mock_conn.read_until.side_effect = [
+            b'',   # read_until(b'OK')
+            b'',   # read_until(CTRL_D + b'>') - no error
+        ]
+
+    # --- stream=False (default) ---
+
+    def test_default_returns_bytes(self):
+        """exec(cmd) returns bytes result"""
+        self._setup_exec_response(b'hello\r\n')
+        result = self.comm.exec("print('hello')")
+        self.assertEqual(result, b'hello\r\n')
+
+    def test_default_returns_empty_bytes(self):
+        """exec(cmd) with no output returns empty bytes"""
+        self._setup_exec_response(b'')
+        result = self.comm.exec("x=1")
+        self.assertEqual(result, b'')
+
+    # --- stream=True (generator) ---
+
+    def test_yield_returns_generator(self):
+        """exec(cmd, stream=True) returns a generator"""
+        import types
+        self._setup_stream_buffer(b'data')
+        gen = self.comm.exec("print('data')", stream=True)
+        self.assertIsInstance(gen, types.GeneratorType)
+        # Consume to avoid ResourceWarning
+        list(gen)
+
+    def test_yield_produces_data(self):
+        """exec(cmd, stream=True) yields all data"""
+        self._setup_stream_buffer(b'hello world')
+        chunks = list(self.comm.exec("print('hello world')", stream=True))
+        self.assertEqual(b''.join(chunks), b'hello world')
+
+    def test_yield_empty_output(self):
+        """exec(cmd, stream=True) with no output yields nothing"""
+        self._setup_stream_buffer(b'')
+        chunks = list(self.comm.exec("x=1", stream=True))
+        self.assertEqual(chunks, [])
+
+    def test_yield_raises_cmd_error(self):
+        """exec(cmd, stream=True) raises CmdError on stderr"""
+        buf = bytearray(b'partial' + mpy_comm.CTRL_D)
+        self.mock_conn._buffer = buf
+        self.mock_conn._read_to_buffer.return_value = False
+        self.mock_conn.read_until.side_effect = [
+            b'',                    # read_until(b'OK')
+            b'NameError: xxx',      # read_until(CTRL_D + b'>') - error
+        ]
+        with self.assertRaises(mpy_comm.CmdError):
+            list(self.comm.exec("xxx", stream=True))
+
+    # --- stream=binary file object ---
+
+    def test_binary_stream_writes_bytes(self):
+        """exec(cmd, stream=BytesIO) writes bytes to stream"""
+        import io
+        self._setup_stream_buffer(b'binary output')
+        out = io.BytesIO()
+        result = self.comm.exec("print('binary output')", stream=out)
+        self.assertEqual(result, b'')
+        self.assertEqual(out.getvalue(), b'binary output')
+
+    def test_binary_stream_empty_output(self):
+        """exec(cmd, stream=BytesIO) with no output writes nothing"""
+        import io
+        self._setup_stream_buffer(b'')
+        out = io.BytesIO()
+        self.comm.exec("x=1", stream=out)
+        self.assertEqual(out.getvalue(), b'')
+
+    # --- stream=text file object ---
+
+    def test_text_stream_writes_str(self):
+        """exec(cmd, stream=StringIO) writes decoded str to stream"""
+        import io
+        self._setup_stream_buffer(b'text output')
+        out = io.StringIO()
+        result = self.comm.exec("print('text output')", stream=out)
+        self.assertEqual(result, b'')
+        self.assertEqual(out.getvalue(), 'text output')
+
+    def test_text_stream_decodes_utf8(self):
+        """exec(cmd, stream=StringIO) decodes UTF-8 correctly"""
+        import io
+        self._setup_stream_buffer('príliš žluťoučký'.encode('utf-8'))
+        out = io.StringIO()
+        self.comm.exec("print('...')", stream=out)
+        self.assertEqual(out.getvalue(), 'príliš žluťoučký')
+
+    def test_text_stream_handles_invalid_utf8(self):
+        """exec(cmd, stream=StringIO) uses backslashreplace for invalid bytes"""
+        import io
+        self._setup_stream_buffer(b'ok\xff\xfebad')
+        out = io.StringIO()
+        self.comm.exec("cmd", stream=out)
+        self.assertIn('ok', out.getvalue())
+        self.assertIn('bad', out.getvalue())
+
+    def test_text_stream_raises_cmd_error(self):
+        """exec(cmd, stream=StringIO) raises CmdError on stderr"""
+        import io
+        buf = bytearray(b'out' + mpy_comm.CTRL_D)
+        self.mock_conn._buffer = buf
+        self.mock_conn._read_to_buffer.return_value = False
+        self.mock_conn.read_until.side_effect = [
+            b'',
+            b'SyntaxError',
+        ]
+        out = io.StringIO()
+        with self.assertRaises(mpy_comm.CmdError):
+            self.comm.exec("bad", stream=out)
+
+
+class TestExecRawPasteStream(unittest.TestCase):
+    """Tests for exec_raw_paste() stream parameter"""
+
+    def setUp(self):
+        self.mock_conn = Mock()
+        self.mock_conn.read_until.return_value = b''
+        self.mock_conn.flush.return_value = None
+        self.comm = mpy_comm.MpyComm(self.mock_conn)
+        self.comm._repl_mode = True
+
+    def _setup_raw_paste_handshake(self):
+        """Configure mock for raw-paste handshake + CTRL_D echo."""
+        self.mock_conn._has_data.return_value = False
+        self.mock_conn.read_bytes.side_effect = [
+            (ord('R'), 1),       # header + status
+            b'\x00\x01',         # window size = 256
+            mpy_comm.CTRL_D,     # CTRL_D echo after send
+        ]
+
+    def _setup_stream_after_handshake(self, data):
+        """Configure buffer for streaming reads after raw-paste handshake."""
+        self._setup_raw_paste_handshake()
+        buf = bytearray(data + mpy_comm.CTRL_D)
+        self.mock_conn._buffer = buf
+        self.mock_conn._read_to_buffer.return_value = False
+        # read_until for stderr (no error)
+        self.mock_conn.read_until.side_effect = [b'']
+
+    def test_default_returns_bytes(self):
+        """exec_raw_paste(cmd) returns bytes"""
+        self._setup_raw_paste_handshake()
+        self.mock_conn.read_until.side_effect = [
+            b'hello\r\n',   # stdout
+            b'',             # stderr
+        ]
+        result = self.comm.exec_raw_paste(b"print('hello')")
+        self.assertEqual(result, b'hello\r\n')
+
+    def test_yield_returns_generator(self):
+        """exec_raw_paste(cmd, stream=True) returns generator"""
+        import types
+        self._setup_stream_after_handshake(b'data')
+        gen = self.comm.exec_raw_paste(b"print('data')", stream=True)
+        self.assertIsInstance(gen, types.GeneratorType)
+        list(gen)
+
+    def test_yield_produces_data(self):
+        """exec_raw_paste(cmd, stream=True) yields all data"""
+        self._setup_stream_after_handshake(b'hello world')
+        chunks = list(self.comm.exec_raw_paste(
+            b"print('hello world')", stream=True))
+        self.assertEqual(b''.join(chunks), b'hello world')
+
+    def test_binary_stream_writes_bytes(self):
+        """exec_raw_paste(cmd, stream=BytesIO) writes to stream"""
+        import io
+        self._setup_stream_after_handshake(b'output')
+        out = io.BytesIO()
+        result = self.comm.exec_raw_paste(b"cmd", stream=out)
+        self.assertEqual(result, b'')
+        self.assertEqual(out.getvalue(), b'output')
+
+    def test_text_stream_writes_str(self):
+        """exec_raw_paste(cmd, stream=StringIO) writes decoded str"""
+        import io
+        self._setup_stream_after_handshake(b'text')
+        out = io.StringIO()
+        result = self.comm.exec_raw_paste(b"cmd", stream=out)
+        self.assertEqual(result, b'')
+        self.assertEqual(out.getvalue(), 'text')
+
+
+class TestTryRawPasteStream(unittest.TestCase):
+    """Tests for try_raw_paste() stream parameter delegation"""
+
+    def setUp(self):
+        self.mock_conn = Mock()
+        self.mock_conn.read_until.return_value = b''
+        self.mock_conn.flush.return_value = None
+        self.comm = mpy_comm.MpyComm(self.mock_conn)
+        self.comm._repl_mode = True
+
+    def test_stream_true_passed_to_raw_paste(self):
+        """try_raw_paste(cmd, stream=True) delegates stream to exec_raw_paste"""
+        self.mock_conn._has_data.return_value = False
+        self.mock_conn.read_bytes.side_effect = [
+            (ord('R'), 1), b'\x00\x01', mpy_comm.CTRL_D,
+        ]
+        buf = bytearray(b'out' + mpy_comm.CTRL_D)
+        self.mock_conn._buffer = buf
+        self.mock_conn._read_to_buffer.return_value = False
+        self.mock_conn.read_until.side_effect = [b'']
+        chunks = list(self.comm.try_raw_paste(
+            b"print(1)", stream=True))
+        self.assertEqual(b''.join(chunks), b'out')
+
+    def test_stream_fallback_to_exec(self):
+        """try_raw_paste with fallback passes stream to exec"""
+        import io
+        self.comm._raw_paste_supported = False
+        self.mock_conn.read_until.side_effect = [
+            b'',           # OK
+            b'result',     # stdout
+            b'',           # stderr
+        ]
+        result = self.comm.try_raw_paste("print(1)")
+        self.assertEqual(result, b'result')
+
+    def test_stream_file_fallback_to_exec(self):
+        """try_raw_paste with fallback passes file-like stream to exec"""
+        import io
+        self.comm._raw_paste_supported = False
+        buf = bytearray(b'out' + mpy_comm.CTRL_D)
+        self.mock_conn._buffer = buf
+        self.mock_conn._read_to_buffer.return_value = False
+        self.mock_conn.read_until.side_effect = [
+            b'',   # OK
+            b'',   # stderr
+        ]
+        out = io.BytesIO()
+        result = self.comm.try_raw_paste("cmd", stream=out)
+        self.assertEqual(result, b'')
+        self.assertEqual(out.getvalue(), b'out')
+
+
+class TestMonitor(unittest.TestCase):
+    """Tests for monitor() method"""
+
+    def setUp(self):
+        self.mock_conn = Mock()
+        self.mock_conn.read_until.return_value = b''
+        self.mock_conn.flush.return_value = None
+        self.comm = mpy_comm.MpyComm(self.mock_conn)
+        self.comm._repl_mode = False
+
+    def _mock_read_sequence(self, chunks):
+        """Configure conn.read() to return chunks then None forever."""
+        it = iter(chunks)
+        def read_side_effect(timeout=None):
+            return next(it, None)
+        self.mock_conn.read.side_effect = read_side_effect
+
+    def test_monitor_returns_bytes(self):
+        """monitor() returns concatenated output as bytes"""
+        self._mock_read_sequence([b'Hello\r\n', b'\r\n>>> '])
+        result = self.comm.monitor()
+        self.assertEqual(result, b'Hello\r\n' + b'\r\n>>> ')
+
+    def test_monitor_stops_at_prompt(self):
+        """monitor() stops when REPL prompt detected"""
+        self._mock_read_sequence([b'done\r\n', b'\r\n>>> ', b'EXTRA'])
+        result = self.comm.monitor()
+        self.assertNotIn(b'EXTRA', result)
+
+    def test_monitor_prompt_split_across_chunks(self):
+        """monitor() detects prompt split across chunks"""
+        self._mock_read_sequence([b'out\r\n>>', b'> '])
+        result = self.comm.monitor()
+        self.assertIn(b'out', result)
+
+    def test_monitor_stream_true_yields_chunks(self):
+        """monitor(stream=True) yields chunks"""
+        self._mock_read_sequence([b'A', b'B\r\n>>> '])
+        chunks = list(self.comm.monitor(stream=True))
+        self.assertEqual(b''.join(chunks), b'AB\r\n>>> ')
+
+    def test_monitor_stream_file(self):
+        """monitor(stream=BytesIO) writes to file-like object"""
+        import io
+        self._mock_read_sequence([b'hello\r\n>>> '])
+        out = io.BytesIO()
+        result = self.comm.monitor(stream=out)
+        self.assertEqual(result, b'')
+        self.assertEqual(out.getvalue(), b'hello\r\n>>> ')
+
+    def test_monitor_stream_text_file(self):
+        """monitor(stream=StringIO) writes decoded text"""
+        import io
+        self._mock_read_sequence([b'hi\r\n>>> '])
+        out = io.StringIO()
+        self.comm.monitor(stream=out)
+        self.assertEqual(out.getvalue(), 'hi\r\n>>> ')
+
+    def test_monitor_follow_ignores_prompt(self):
+        """monitor(follow=True) doesn't stop at prompt"""
+        call_count = [0]
+        def read_side_effect(timeout=None):
+            call_count[0] += 1
+            if call_count[0] == 1:
+                return b'\r\n>>> '
+            if call_count[0] == 2:
+                return b'more'
+            if call_count[0] == 3:
+                raise KeyboardInterrupt
+            return None
+        self.mock_conn.read.side_effect = read_side_effect
+        chunks = []
+        with self.assertRaises(KeyboardInterrupt):
+            for chunk in self.comm.monitor(stream=True, follow=True):
+                chunks.append(chunk)
+        self.assertIn(b'more', chunks)
+
+    def test_monitor_exits_raw_repl(self):
+        """monitor() exits raw REPL mode before reading"""
+        self.comm._repl_mode = True
+        self._mock_read_sequence([b'\r\n>>> '])
+        self.comm.monitor()
+        # Should have written CTRL_B to exit raw REPL
+        writes = [c[0][0] for c in self.mock_conn.write.call_args_list]
+        self.assertIn(mpy_comm.CTRL_B, writes)
+
+
+class TestCwdAndPathTracking(unittest.TestCase):
+    """Tests for CWD and sys.path tracking for soft reset restore"""
+
+    def setUp(self):
+        self.mock_conn = Mock()
+        self.mock_conn._escape_handlers = {}
+        self.mock_conn.register_escape_handler = Mock(
+            side_effect=lambda b, h: self.mock_conn._escape_handlers.__setitem__(b, h))
+        self.mpy = Mpy(self.mock_conn)
+
+    def test_initial_state_none(self):
+        """_custom_cwd and _custom_syspath are None initially"""
+        self.assertIsNone(self.mpy._custom_cwd)
+        self.assertIsNone(self.mpy._custom_syspath)
+
+    def test_chdir_saves_cwd(self):
+        """chdir() saves path to _custom_cwd"""
+        self.mpy._mpy_comm = Mock()
+        self.mpy._imported = ['os']
+        self.mpy.chdir('/lib')
+        self.assertEqual(self.mpy._custom_cwd, '/lib')
+        self.mpy._mpy_comm.exec.assert_called()
+
+    def test_set_sys_path_saves_path(self):
+        """set_sys_path() saves to _custom_syspath"""
+        self.mpy._mpy_comm = Mock()
+        self.mpy._imported = ['sys']
+        self.mpy.set_sys_path('/lib', '/app')
+        self.assertEqual(self.mpy._custom_syspath, ['/lib', '/app'])
+
+    def test_prepend_sys_path_saves_path(self):
+        """prepend_sys_path() saves combined path to _custom_syspath"""
+        self.mpy._mpy_comm = Mock()
+        self.mpy._mpy_comm.exec_eval.return_value = ['/old']
+        self.mpy._imported = ['sys']
+        self.mpy.prepend_sys_path('/new')
+        self.assertEqual(self.mpy._custom_syspath, ['/new', '/old'])
+
+    def test_append_sys_path_saves_path(self):
+        """append_sys_path() saves combined path to _custom_syspath"""
+        self.mpy._mpy_comm = Mock()
+        self.mpy._mpy_comm.exec_eval.return_value = ['/old']
+        self.mpy._imported = ['sys']
+        self.mpy.append_sys_path('/new')
+        self.assertEqual(self.mpy._custom_syspath, ['/old', '/new'])
+
+    def test_remove_from_sys_path_saves_path(self):
+        """remove_from_sys_path() saves filtered path to _custom_syspath"""
+        self.mpy._mpy_comm = Mock()
+        self.mpy._mpy_comm.exec_eval.return_value = ['/a', '/b', '/c']
+        self.mpy._imported = ['sys']
+        self.mpy.remove_from_sys_path('/b')
+        self.assertEqual(self.mpy._custom_syspath, ['/a', '/c'])
+
+
+def _make_otadata(entries, sector=4096):
+    """Build a synthetic otadata partition (2 sectors, erased = 0xff).
+
+    entries: list of (ota_seq, ota_state) for entry 0 and entry 1.
+    """
+    import struct
+    import zlib
+    raw = bytearray(b'\xff' * (sector * 2))
+    for i, (seq, state) in enumerate(entries):
+        off = i * sector
+        struct.pack_into('<I', raw, off, seq)
+        struct.pack_into('<I', raw, off + 24, state)
+        crc = zlib.crc32(struct.pack('<I', seq), 0xffffffff) & 0xffffffff
+        struct.pack_into('<I', raw, off + 28, crc)
+    return bytes(raw)
+
+
+class TestOtaStates(unittest.TestCase):
+    """Tests for _annotate_ota_states (OTA rollback state from otadata)"""
+
+    def setUp(self):
+        self.mock_conn = Mock()
+        self.mpy = Mpy(self.mock_conn)
+
+    @staticmethod
+    def _parts():
+        return [
+            {'type': 1, 'subtype_name': 'ota', 'subtype': 0,
+                'size': 8192, 'label': 'otadata'},
+            {'type': 0, 'subtype_name': 'ota_0', 'subtype': 16,
+                'label': 'ota_0'},
+            {'type': 0, 'subtype_name': 'ota_1', 'subtype': 17,
+                'label': 'ota_1'},
+        ]
+
+    def _annotate(self, raw):
+        parts = self._parts()
+        with patch.object(
+                self.mpy, '_read_partition_magic', return_value=(raw, 4096)):
+            self.mpy._annotate_ota_states(parts)
+        return parts[1], parts[2]  # ota_0, ota_1
+
+    def test_both_valid_boot_slot0(self):
+        # seq 17 -> slot (17-1)%2=0 (ota_0), seq 16 -> slot 1 (ota_1)
+        ota0, ota1 = self._annotate(_make_otadata([(17, 0x2), (16, 0x2)]))
+        self.assertEqual(ota0['ota_state'], 'valid')
+        self.assertTrue(ota0['ota_boot'])
+        self.assertEqual(ota1['ota_state'], 'valid')
+        self.assertFalse(ota1['ota_boot'])
+
+    def test_pending_verify_on_boot(self):
+        # seq 18 -> slot 1 (ota_1) pending, seq 17 -> slot 0 (ota_0) valid
+        ota0, ota1 = self._annotate(_make_otadata([(18, 0x1), (17, 0x2)]))
+        self.assertEqual(ota0['ota_state'], 'valid')
+        self.assertFalse(ota0['ota_boot'])
+        self.assertEqual(ota1['ota_state'], 'pending-verify')
+        self.assertTrue(ota1['ota_boot'])
+
+    def test_bad_crc_entry_ignored(self):
+        import struct
+        raw = bytearray(_make_otadata([(17, 0x2), (16, 0x2)]))
+        struct.pack_into('<I', raw, 28, 0xdeadbeef)  # corrupt entry 0 crc
+        ota0, ota1 = self._annotate(bytes(raw))
+        # entry 0 (ota_0) rejected -> no state; entry 1 (ota_1) still valid
+        self.assertNotIn('ota_state', ota0)
+        self.assertEqual(ota1['ota_state'], 'valid')
+        self.assertTrue(ota1['ota_boot'])  # only surviving entry -> boot
+
+    def test_no_otadata_is_noop(self):
+        parts = [{'type': 0, 'subtype_name': 'factory', 'subtype': 0,
+                  'label': 'factory'}]
+        self.mpy._annotate_ota_states(parts)  # must not raise
+        self.assertNotIn('ota_state', parts[0])
+
+    def test_erased_otadata_no_state(self):
+        # both entries erased (0xff) -> no valid seq
+        ota0, ota1 = self._annotate(b'\xff' * 8192)
+        self.assertNotIn('ota_state', ota0)
+        self.assertNotIn('ota_state', ota1)
+
+
+class TestOtaConfirmBoot(unittest.TestCase):
+    """Tests for Mpy.ota_confirm and Mpy.ota_set_boot"""
+
+    def setUp(self):
+        self.mock_conn = Mock()
+        self.mpy = Mpy(self.mock_conn)
+        self.mpy._mpy_comm = Mock()
+        self.mpy._imported = ['esp32']  # skip 'import esp32' exec call
+
+    def _exec_cmds(self):
+        return [c.args[0] for c in self.mpy._mpy_comm.exec.call_args_list]
+
+    def test_ota_confirm_marks_valid(self):
+        self.mpy._mpy_comm.exec_eval.return_value = 'ota_0'
+        result = self.mpy.ota_confirm()
+        self.assertEqual(result, 'ota_0')
+        self.assertTrue(any(
+            'mark_app_valid_cancel_rollback' in c for c in self._exec_cmds()))
+
+    def test_ota_confirm_no_ota_layout(self):
+        self.mpy._mpy_comm.exec_eval.side_effect = mpy_comm.CmdError(
+            "cmd", b"", b"error")
+        with self.assertRaises(mpy_comm.MpyError):
+            self.mpy.ota_confirm()
+
+    def test_ota_confirm_mark_fails(self):
+        self.mpy._mpy_comm.exec_eval.return_value = 'ota_0'
+        self.mpy._mpy_comm.exec.side_effect = mpy_comm.CmdError(
+            "cmd", b"", b"not supported")
+        with self.assertRaises(mpy_comm.MpyError) as ctx:
+            self.mpy.ota_confirm()
+        self.assertIn('rollback', str(ctx.exception))
+
+    def test_ota_set_boot_next_slot(self):
+        self.mpy._mpy_comm.exec_eval.return_value = 'ota_1'
+        result = self.mpy.ota_set_boot()
+        self.assertEqual(result, 'ota_1')
+        self.assertTrue(any(
+            'get_next_update().set_boot()' in c for c in self._exec_cmds()))
+
+    def test_ota_set_boot_by_label(self):
+        self.mpy._mpy_comm.exec_eval.return_value = 1  # len(find(...)) == 1
+        result = self.mpy.ota_set_boot('ota_1')
+        self.assertEqual(result, 'ota_1')
+        self.assertTrue(any(
+            "label='ota_1'" in c and 'set_boot' in c
+            for c in self._exec_cmds()))
+
+    def test_ota_set_boot_unknown_label(self):
+        self.mpy._mpy_comm.exec_eval.return_value = 0  # find returns empty
+        with self.assertRaises(mpy_comm.MpyError) as ctx:
+            self.mpy.ota_set_boot('nope')
+        self.assertIn('not found', str(ctx.exception))
+
+
+if __name__ == "__main__":
+    unittest.main()

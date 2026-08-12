@@ -1,0 +1,34 @@
+[build-system]
+requires = ["setuptools", "setuptools-scm"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mpytool"
+dynamic = ["version"]
+description = "MPY tool - manage files on devices running MicroPython"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.10"
+authors = [
+    { name = "Pavel Revak", email = "pavelrevak@gmail.com" }
+]
+keywords = ["MPY", "micropython"]
+dependencies = [
+    "pyserial>=3.0",
+    "mpy-cross",
+]
+
+[project.urls]
+Homepage = "https://github.com/cortexm/mpytool"
+
+[project.scripts]
+mpytool = "mpytool.mpytool:main"
+
+[tool.setuptools.packages.find]
+include = ["mpytool*"]
+
+[tool.setuptools_scm]
+# Generates mpytool/_version.py at build time
+write_to = "mpytool/_version.py"
+# Fallback for installs without git (e.g., downloaded ZIP)
+fallback_version = "0.0.0"
